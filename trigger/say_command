@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# triggers when the /say command is run
+# variables available are as follows:
+# ["$player"] "$message"
+
+#if [ "$player" = "Server" -a "$message" = "Server backing up." ] ; then # todo: make this a separate function that other things can call, add backup "Saved the world" trigger to main loop
+if [ "$message" = "Server backing up." ] ; then
+	mc_ignore_armorstand say This will disable all wrapper-enhanced functionality until the backup is complete.
+	mc save-off
+	mc save-all flush
+fi

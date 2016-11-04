@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# triggers on failed execute commands
+# variables available are as follows:
+# Failed to execute '"$command"' as "$player"
+
+if [ "$command" = "scoreboard players set @e[type=Item,c=1,r=3] blend 2" ] ; then
+	set_score_zero="blend"
+	mc tellraw "$executer" [\"["$ARMORSTAND"] Put your item on the ground!\"]
+fi

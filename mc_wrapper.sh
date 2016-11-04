@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # google minecraft server fifo for other people's projects? not really helpful
 # maybe: look up minecraft /trigger command, maybe use that to help with triggers and grabs, possibly need to hardcore use that since op might be required?
 # todo: ops support/permission levels
@@ -19,6 +20,7 @@
 #	http://tldp.org/LDP/abs/html/special-chars.html (ctrl+f "cat -"), or cat > mc_input (if I can get it to terminate when the server does)
 # todo: let the player run a backup and give it a clickable link for download, unless a backup has been run in the last [time interval]
 # todo: way to get player coordinates (summon a marker, tp marker to $player, get marker's xyz (tp to ~ ~ ~) and entitydata (for rotation)
+#	do as much of this as possible in game to make it faster
 #	then triiiiiiiiig
 # todo: write clear for block inventories
 
@@ -27,9 +29,11 @@ PREFIX="!"
 ARMORSTAND="-"
 MINECRAFT_DIR="/home/bob/Programs/minecraft_server" # no trailing slash, be careful about quotes here
 BACKUP_DIR="/home/bob/Programs/mc_wrapper/backups"
+SCRIPT_NAME="mc_wrapper.sh"
+TRIGGER="trigger"	# todo: figure out if it should be "$TRIGGER/dir" or "$TRIGGER"/dir or just $TRIGGER/dir
 
 # Not Options?:
-WRAPPER_DIR="$(pwd)"
+WRAPPER_DIR="$PWD" # todo: figure this the hell out, I think this script must be run from PWD to function
 LEVEL_NAME="$(grep level-name= $MINECRAFT_DIR/server.properties | sed 's/level-name=//')"
 
 # Tranlsation:
@@ -91,153 +95,15 @@ function grab() {
 # usage: $set_score_zero=<objective>
 # use this to prevent $player spamming things and breaking them
 
-# tirggers when the grab function is run
-# variables available are "$grab", the argument passed to the grab function
-trigger_grab() {
-	if [ "$grab" = "blend" ] ; then
-		player="$grabber"
-		if echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: .* has .* that match the criteria$' ; then
-			mc scoreboard players set "$player" blend 1
-			mc execute "$player" "~ ~ ~" scoreboard players set @e[type=Item,c=1,r=3] blend 2
-		elif echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Could not clear the inventory of .*, no items to remove$' ; then
-			mc tellraw "$player" [\"["$ARMORSTAND"] Blending costs 1 book\"]
-		elif echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: The data tag did not change: {.*}$' ; then
-			set_score_zero="blend"
-			if echo "$last" | grep -q '^.*{ench:.*}$' ; then
-				#repair_cost="$(echo \"$last\" | sed 's///')"
-				mc kill "$item"
-				mc clear "$player" minecraft:book -1 1
-				mc xp -5L "$player" # todo make this based on RepairCost, maybe also increase RepairCost with blend, and check to make sure the player can afford it
-				mc give "$player" minecraft:enchanted_book 1 0 "$(echo "$last" | sed 's/^.*{ench:/{StoredEnchantments:/;s/,Damage:0s.*$//')"
-			else # not necessary if there's ever a NBT wildcard for dataTag selectors {Item:{tag:{ench:*}}}
-				mc tellraw "$player" [\"["$ARMORSTAND"] Item not enchanted\"]
-				mc scoreboard players reset "$item" blend
-			fi
-		else # make sure to put this else at the end of each grab
-			mc say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab".
-		fi
-#	elif [ "$grab" = "xyz" ] ; then
-#		if echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: \[-: Teleported Armor Stand to .*, .*, .*\]$' ; then
-#			mc say beep
-#			kill @e[type=ArmorStand,name=xyz,tag=xyz]
-#		else
-#			mc say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab".
-#		fi
-	elif [ "$grab" = "smash" ] ; then
-		player="$grabber"
-		set_score_zero="smash"
-		mc say boop
-	else # make sure to leave this here
-		mc say "$ERR_INVALID_GRAB" "$grab".
-	fi
-}
-
-# triggers when a scoreboard value is updated
-# variables available are as follows:
-# ["$executer": Set score of "$objective" for player "$player" to "$score"]
-trigger_scoreboard_value() {
-	if [ "$objective" = "blend" -a "$score" = "2" ] ; then
-		item="$player" # use this variable with caution
-		grab blend entitydata "$item" {}
-	elif [ "$objective" = "smash" -a "$score" = "1" ] ; then
-		grabber="$player"
-		grab smash blockdata -11 4 -9 {} # todo: implement multiple smashers in a world
-	elif [ "$objective" = "onGround" -a "$score" = "1" ] ; then
-		mc effect "$player" minecraft:levitation 1 1 true
-	fi
-}
-
-# triggers when a message starting with $PREFIX is said in global chat
-# passes $message as arguments so prefix commands can have arbitrary arguments
-# variables available are as follows:
-# <"$player"> $PREFIX"$message"
-trigger_global_message_prefix() {
-	if [ "$player" = "Megabobster" -a "$1" = "halt" ] ; then
-		running="0"
-	elif [ "$1" = "blend" ] ; then
-		grabber="$player"
-		grab blend clear @a[name="$player",score_blend=0] minecraft:book -1 0
-	elif [ "$1" = "bork" ] ; then
-		if [ "$2" = "1" ] ; then
-			grab bork tp @a[score_bork=0] "~ ~ ~"		# ERR_GRAB_INPUT_NOT_RECEIVED
-		elif [ "$2" = "2" ] ; then
-			grab bork execute @a "~ ~ ~" entitydata @e {}	# ERR_MULTIPLE_GRAB_INPUTS
-		elif [ "$2" = "3" ] ; then
-			grab blend say bork				# ERR_UNEXPECTED_GRAB_INPUT
-		elif [ "$2" = "4" ] ; then
-			grab bork tell "$player" bork			# ERR_INVALID_GRAB
-#		else
-#			mc tellraw "$player" [\"["$ARMORSTAND"] Usage: !bork <1-4>\"] # todo: what the hell is going on with this tellraw. < and > stuff, as well as quote/JSON stuff, I think?
-		fi
-	elif [ "$1" = "k" ] ; then
-		if [ "$2" -le "16" ] ; then
-			for i in $(seq 1 "$2") ; do
-				mc say k
-			done
-		else
-			mc say no
-		fi
-	elif [ "$1" = "run" ] ; then
-		if [ "$2" ] ; then
-			if [ "$2" -le "16" ] ; then
-				for i in $(seq 1 "$2") ; do
-					mc execute "$player" "~ ~ ~" "${@:3}"
-				done
-			else
-				mc say Run cannot exceed 16 loops.
-			fi
-		else
-			mc say No arguments provided.
-#			mc tellraw "$player" [\"["$ARMORSTAND"] Usage: !run <1-16> <command>\"] # todo: seriously what's going on here
-		fi
-	elif [ "$1" = "level-name" ] ; then
-		mc say "$LEVEL_NAME"
-#	elif [ "$1" = "xyz" ] ; then # todo: trigger like grab, not grab...
-#		mc execute "$player" "~ ~ ~" summon ArmorStand "~ ~ ~" "{CustomName:\"xyz\",Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:\"xyz\"]}"
-#		grab xyz tp @e[name=xyz,tag=xyz,c=1] "~ ~ ~"
-	else
-		mc say "$ERR_INVALID_MESSAGE_COMMAND" "$1".
-	fi
-}
-
-# triggers when a message is said in global chat
-# variables available are as follows:
-# <"$player"> "$message"
-trigger_global_message() {
-	if [ "$message" = "xyzzy" ] ; then
-		mc tp "$player" 0 4 0
-	elif [ "$message" = "foo" ] ; then
-		for i in $(seq 1 16) ; do
-			mc execute "$player" "~ ~ ~" summon Pig
-			mc give "$player" dirt
-		done
-	elif echo "$message" | grep -q -e 'https\?://.* ' -e 'https\?://.*$' ; then
-		url="$(echo "$message" | sed 's|^.*https?://|https?://|;s| .*$||')"
-		mc tellraw @a [\"[-] [\",\{\"text\":\"link\",\"underlined\":true,\"clickEvent\":\{\"action\":\"open_url\",\"value\":\""$url"\"\}\},\"]\"]
-	fi
-}
-
-# triggers when the /say command is run
-# variables available are as follows:
-# ["$player"] "$message"
-trigger_say_command() {
-#	if [ "$player" = "Server" -a "$message" = "Server backing up." ] ; then # todo: make this a separate function that other things can call, add backup "Saved the world" trigger to main loop
-	if [ "$message" = "Server backing up." ] ; then
-		mc_ignore_armorstand say This will disable all wrapper-enhanced functionality until the backup is complete.
-		mc save-off
-		mc save-all flush
-	fi
-}
-
-# triggers on failed execute commands
-# variables available are as follows:
-# Failed to execute '"$command"' as "$player"
-trigger_execute_failure() {
-	if [ "$command" = "scoreboard players set @e[type=Item,c=1,r=3] blend 2" ] ; then
-		set_score_zero="blend"
-		mc tellraw "$executer" [\"["$ARMORSTAND"] Put your item on the ground!\"]
-	fi
-}
+if ! ls | grep -q "$SCRIPT_NAME" ; then
+	echo "This program must be run from within the directory containing"
+	echo "$SCRIPT_NAME, exiting..."
+	exit
+fi
+if ! [ -d "$TRIGGER" ] ; then
+	echo "Trigger folder ($TRIGGER) not present or renamed, exiting..."
+	exit
+fi
 
 mc_ignore_armorstand say "$WRAPPER_INIT_START"
 running="1"
@@ -285,28 +151,29 @@ while [ "$running" = "1" ] ; do
 			elif ! echo "$fail" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Set score of grab for player fail to 0$' ; then
 				mc say "$ERR_MULTIPLE_GRAB_INPUTS" "$grab".
 			else
-				trigger_grab
+				. "$TRIGGER/grab"
 			fi
 		else
-			trigger_scoreboard_value
+			. "$TRIGGER/scoreboard_value"
 		fi
-	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: <.*> $PREFIX.*$" ; then
-		player="$(echo "$line" | sed 's/^.*<//;s/>.*$//')"
-		message="$(echo "$line" | sed "s/^[^>]*> $PREFIX//")"
-		trigger_global_message_prefix $message
 	elif echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: <.*> .*$' ; then
 		player="$(echo "$line" | sed 's/^.*<//;s/>.*$//')"
 		message="$(echo "$line" | sed 's/^[^>]*> //')"
-		trigger_global_message
+		if echo "$message" | grep -q "^$PREFIX.*$" ; then
+			message="$(echo "$line" | sed "s/^[^>]*> $PREFIX//")" # todo: make this based on $message instead of $line, also maybe use $command or something
+			. "$TRIGGER/global_message_prefix" $message
+		else
+			. "$TRIGGER/global_message"
+		fi
 	elif echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: \[.*\] .*$' ; then
 		trim="$(echo "$line" | sed 's/^\[..:..:..\] \[Server thread\/INFO\]: \[//')" # todo: make this regex not suck
 		player="$(echo "$trim" | sed 's/\].*//')"
 		message="$(echo "$trim" | sed 's/.*[^\]]*] //')"
-		trigger_say_command
+		. "$TRIGGER/say_command"
 	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: Failed to execute '.*' as .*$" ; then
 		command="$(echo "$line" | sed "s/^[^']*'//;s/' as .*$//")"
 		executer="$(echo "$line" | sed "s/^.*' as //")"
-		trigger_execute_failure
+		. "$TRIGGER/execute_failure"
 	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: \[$ARMORSTAND: Saved the world\]$" ; then # todo: change $ARMORSTAND to $player, make this another trigger
 		zip -r "$BACKUP_DIR"/"$LEVEL_NAME"\_"$(date +%Y-%m-%d.%H.%M.%S)".zip "$MINECRAFT_DIR"/"$LEVEL_NAME"
 		cd "$BACKUP_DIR"/ # maybe: create directory or error if it doesn't exist

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# triggers when a scoreboard value is updated
+# variables available are as follows:
+# ["$executer": Set score of "$objective" for player "$player" to "$score"]
+
+if [ "$objective" = "blend" -a "$score" = "2" ] ; then
+	item="$player" # use this variable with caution
+	grab blend entitydata "$item" {}
+elif [ "$objective" = "smash" -a "$score" = "1" ] ; then
+	grabber="$player"
+	grab smash blockdata -11 4 -9 {} # todo: implement multiple smashers in a world
+elif [ "$objective" = "onGround" -a "$score" = "1" ] ; then
+	mc effect "$player" minecraft:levitation 1 1 true
+fi

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# triggers when a message is said in global chat
+# variables available are as follows:
+# <"$player"> "$message"
+
+if [ "$message" = "xyzzy" ] ; then
+	mc tp "$player" 0 4 0
+elif [ "$message" = "foo" ] ; then
+	for i in $(seq 1 16) ; do
+		mc execute "$player" "~ ~ ~" summon Pig
+		mc give "$player" dirt
+	done
+elif echo "$message" | grep -q -e 'https\?://.* ' -e 'https\?://.*$' ; then
+	url="$(echo "$message" | sed 's|^.*https?://|https?://|;s| .*$||')"
+	mc tellraw @a [\"[-] [\",\{\"text\":\"link\",\"underlined\":true,\"clickEvent\":\{\"action\":\"open_url\",\"value\":\""$url"\"\}\},\"]\"]
+fi
