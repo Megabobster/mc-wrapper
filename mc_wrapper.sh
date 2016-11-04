@@ -1,32 +1,30 @@
 #!/bin/bash
 # google minecraft server fifo for other people's projects? not really helpful
 # maybe: look up /trigger command, maybe use that to help with triggers and grabs, possibly need to hardcore use that since op might be required?
-# todo: write clear for block inventories
 # todo: ops support/permission levels
+# todo: stderr https://google.github.io/styleguide/shell.xml?showone=STDOUT_vs_STDERR#STDOUT_vs_STDERR
 # todo: add constants (variables) for where files/fifos are stored and what tmux sessions are named
 # maybe: constants in separate config file/"include"
-# https://google.github.io/styleguide/shell.xml?showone=Constants_and_Environment_Variable_Names#Constants_and_Environment_Variable_Names
-# todo: stderr https://google.github.io/styleguide/shell.xml?showone=STDOUT_vs_STDERR#STDOUT_vs_STDERR
+#	https://google.github.io/styleguide/shell.xml?showone=Constants_and_Environment_Variable_Names#Constants_and_Environment_Variable_Names
 # maybe: minecraft_server.jar >> mc_output.txt then in scripts tail -f mc_output.txt might allow multiple scripts simultaneously
-# maybe: read current directory, check if it's scripts directory
-# todo: find out if halt condition should be a variable set to 0 instead of break
+#	read current directory, check if it's scripts directory, autostart scripts, that kind of thing
 # maybe: figure out "if" regex to reduce echo $line | grep $* and echo $line | sed s/// if at all possible (bash substitution regex/glob? see man [)
-# https://google.github.io/styleguide/shell.xml?showone=Builtin_Commands_vs._External_Commands#Builtin_Commands_vs._External_Commands
+#	https://google.github.io/styleguide/shell.xml?showone=Builtin_Commands_vs._External_Commands#Builtin_Commands_vs._External_Commands
 # maybe: sed variable for current time, trigger for current time? (time=$(echo $line | grep ^[...
-# todo: way to grab player coordinates (summon a marker, tp marker to $player, grab xyz tp marker to ~ ~ ~)
 # todo: way to list current players (/list + regex)
-# todo: player voting (based on scoreboards?)
-# todo: trigger on more things like /me, other stuff
-# todo: http://tldp.org/LDP/abs/html/special-chars.html (ctrl+f "cat -"), possibly allow command line input via wrapper (or maybe background then read in a loop)
-#	currently no way to admin server from command line
+# maybe: player voting (based on scoreboards)
+# todo: trigger on more things like /me
+# todo: currently no way to admin server from command line, possibly allow command line input via wrapper (or maybe background then read in a loop)
+#	http://tldp.org/LDP/abs/html/special-chars.html (ctrl+f "cat -"), or cat > mc_input (if I can get it to terminate when the server does)
 # todo: let the player run a backup and give it a clickable link for download, unless a backup has been run in the last [time interval]
-# todo: add better halt conditions ($running=0 or something like that instead of break?)
-# todo: triiiiiiiiig
+# todo: way to get player coordinates (summon a marker, tp marker to $player, get marker's xyz (tp to ~ ~ ~) and entitydata (for rotation)
+#	then triiiiiiiiig
+# todo: write clear for block inventories
 
 # Options:
 PREFIX="!"
 ARMORSTAND="-"
-LEVEL_NAME="$(grep level-name= server.properties | sed s/level-name=//)"
+LEVEL_NAME="$(grep level-name= server.properties | sed 's/level-name=//')"
 
 # Tranlsation:
 ERR_GRAB_INPUT_NOT_RECEIVED="Input not received in grab"
@@ -44,11 +42,17 @@ WRAPPER_HALT="Wrapper halted."
 # like so: mc setblock 1 2 3 air
 # or like so: mc execute @r "~ ~ ~" tp @p "~ ~1 ~"
 # feel free to get fancy/use variables/insert $(echo $line | sed s///)
-# just make sure to escape or quote tildes so they don't expand to home dir
+# entity selectors are allowed as well!
+# just make sure to escape or quote special characters if necessary
 
 function mc() {
 	echo "execute @r[type=ArmorStand,name=$ARMORSTAND,tag=$ARMORSTAND] ~ ~ ~ $*" > mc_input # $* necessary to preserve spaces
 }
+
+# function mc_ignore_armorstand is identical to mc, however, it executes as the server and
+# mc executes as a marker armorstand; this results in less spam to players
+# mc is fancier, mc_ignore_armorstand will always work
+
 function mc_ignore_armorstand() {
 	echo "$*" > mc_input
 }
@@ -86,10 +90,10 @@ function grab() {
 trigger_grab() {
 	if [ "$grab" = "blend" ] ; then
 		player="$grabber"
-		if echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: .* has .* that match the criteria' ; then
+		if echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: .* has .* that match the criteria$' ; then
 			mc scoreboard players set "$player" blend 1
 			mc execute "$player" "~ ~ ~" scoreboard players set @e[type=Item,c=1,r=3] blend 2
-		elif echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Could not clear the inventory of .*, no items to remove' ; then
+		elif echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Could not clear the inventory of .*, no items to remove$' ; then
 			mc tellraw "$player" [\"["$ARMORSTAND"] Blending costs 1 book\"]
 		elif echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: The data tag did not change: {.*}$' ; then
 			set_score_zero="blend"
@@ -97,7 +101,7 @@ trigger_grab() {
 				#repair_cost="$(echo \"$last\" | sed 's///')"
 				mc kill "$item"
 				mc clear "$player" minecraft:book -1 1
-				mc xp -5L "$player" # todo make this based on RepairCost, maybe also increase RepairCost with blend
+				mc xp -5L "$player" # todo make this based on RepairCost, maybe also increase RepairCost with blend, and check to make sure the player can afford it
 				mc give "$player" minecraft:enchanted_book 1 0 "$(echo "$last" | sed 's/^.*{ench:/{StoredEnchantments:/;s/,Damage:0s.*$//')"
 			else # not necessary if there's ever a NBT wildcard for dataTag selectors {Item:{tag:{ench:*}}}
 				mc tellraw "$player" [\"["$ARMORSTAND"] Item not enchanted\"]
@@ -228,16 +232,17 @@ mc_ignore_armorstand say "$WRAPPER_INIT_START"
 running="1"
 while [ "$running" = "1" ] ; do
 	read line
-	if echo "$line" | grep '^\[..:..:..\] \[Server thread/INFO\]: Starting minecraft server version .*' ; then
+	if echo "$line" | grep '^\[..:..:..\] \[Server thread/INFO\]: Starting minecraft server version .*$' ; then
 		running="2"
 		while [ "$running" = "2" ] ; do
 			read line
-			if echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Done (.*)! For help, type "help" or "?"$' ; then
+			echo "$line"
+			if echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Done (.*)! For help, type "help" or "?"$' ; then # todo: make sure this is indeed outputting everything
 				running="1"
 			fi
-			echo "$line"
 		done
-	elif echo "$line" | grep -e '^\[..:..:..\] \[Server thread/INFO\]: Done (.*)! For help, type "help" or "?"$' -e "^\[..:..:..\] \[Server thread/INFO\]: \[Server\] $WRAPPER_INIT_START$"; then
+#	elif echo "$line" | grep -e '^\[..:..:..\] \[Server thread/INFO\]: Done (.*)! For help, type "help" or "?"$' -e "^\[..:..:..\] \[Server thread/INFO\]: \[Server\] $WRAPPER_INIT_START$"; then
+	elif echo "$line" | grep "^\[..:..:..\] \[Server thread/INFO\]: \[Server\] $WRAPPER_INIT_START$" ; then
 		mc_ignore_armorstand kill @e[type=ArmorStand,name="$ARMORSTAND",tag="$ARMORSTAND"]
 		mc_ignore_armorstand summon ArmorStand 0 0 0 "{CustomName:\"$ARMORSTAND\",Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:\"$ARMORSTAND\"]}"
 		# todo: constant for worldspawn
@@ -278,7 +283,7 @@ while [ "$running" = "1" ] ; do
 	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: <.*> $PREFIX.*$" ; then
 		player="$(echo "$line" | sed 's/^.*<//;s/>.*$//')"
 		message="$(echo "$line" | sed "s/^[^>]*> $PREFIX//")"
-		trigger_global_message_prefix $message # todo: arguments
+		trigger_global_message_prefix $message
 	elif echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: <.*> .*$' ; then
 		player="$(echo "$line" | sed 's/^.*<//;s/>.*$//')"
 		message="$(echo "$line" | sed 's/^[^>]*> //')"
@@ -292,15 +297,15 @@ while [ "$running" = "1" ] ; do
 		command="$(echo "$line" | sed "s/^[^']*'//;s/' as .*$//")"
 		executer="$(echo "$line" | sed "s/^.*' as //")"
 		trigger_execute_failure
-	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: Stopping server$" ; then
-		running="0"
-	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: \[$ARMORSTAND: Saved the world\]$" ; then
+	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: \[$ARMORSTAND: Saved the world\]$" ; then # todo: change $ARMORSTAND to $player, make this another trigger
 		zip -r backups/"$LEVEL_NAME"\_"$(date +%Y-%m-%d.%H.%M.%S)".zip "$LEVEL_NAME"
 		cd backups/ # todo: constant for backups directory, possibly create it if it doesn't exist (or just error)
 		ls -td "$LEVEL_NAME"* | sed -e '1,7d' | xargs -d '\n' rm
 		cd ..
 		mc save-on
 		mc_ignore_armorstand say Server backup complete.
+	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: Stopping server$" ; then
+		running="0"
 	# do not put an else here unless you explicitly want to run a command on every line the server outputs
 	fi
 # </the magic>
