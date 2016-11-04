@@ -1,10 +1,11 @@
 #!/bin/bash
 # google minecraft server fifo for other people's projects? not really helpful
-# maybe: look up /trigger command, maybe use that to help with triggers and grabs, possibly need to hardcore use that since op might be required?
+# maybe: look up minecraft /trigger command, maybe use that to help with triggers and grabs, possibly need to hardcore use that since op might be required?
 # todo: ops support/permission levels
 # todo: stderr https://google.github.io/styleguide/shell.xml?showone=STDOUT_vs_STDERR#STDOUT_vs_STDERR
 # todo: add constants (variables) for where files/fifos are stored and what tmux sessions are named
 # maybe: constants in separate config file/"include"
+#	every trigger in a separate include...? that would be awesome
 #	https://google.github.io/styleguide/shell.xml?showone=Constants_and_Environment_Variable_Names#Constants_and_Environment_Variable_Names
 # maybe: minecraft_server.jar >> mc_output.txt then in scripts tail -f mc_output.txt might allow multiple scripts simultaneously
 #	read current directory, check if it's scripts directory, autostart scripts, that kind of thing
@@ -24,7 +25,12 @@
 # Options:
 PREFIX="!"
 ARMORSTAND="-"
-LEVEL_NAME="$(grep level-name= server.properties | sed 's/level-name=//')"
+MINECRAFT_DIR="/home/bob/Programs/minecraft_server" # no trailing slash, be careful about quotes here
+BACKUP_DIR="/home/bob/Programs/mc_wrapper/backups"
+
+# Not Options?:
+WRAPPER_DIR="$(pwd)"
+LEVEL_NAME="$(grep level-name= $MINECRAFT_DIR/server.properties | sed 's/level-name=//')"
 
 # Tranlsation:
 ERR_GRAB_INPUT_NOT_RECEIVED="Input not received in grab"
@@ -160,8 +166,8 @@ trigger_global_message_prefix() {
 			grab blend say bork				# ERR_UNEXPECTED_GRAB_INPUT
 		elif [ "$2" = "4" ] ; then
 			grab bork tell "$player" bork			# ERR_INVALID_GRAB
-		else
-			mc tellraw "$player" [\"["$ARMORSTAND"] Usage: !bork <1-4>\"]
+#		else
+#			mc tellraw "$player" [\"["$ARMORSTAND"] Usage: !bork <1-4>\"] # todo: what the hell is going on with this tellraw. < and > stuff, as well as quote/JSON stuff, I think?
 		fi
 	elif [ "$1" = "k" ] ; then
 		if [ "$2" -le "16" ] ; then
@@ -172,13 +178,18 @@ trigger_global_message_prefix() {
 			mc say no
 		fi
 	elif [ "$1" = "run" ] ; then
-		if [ "$2" -le "16" ] ; then
-                        for i in $(seq 1 "$2") ; do
-                                mc execute "$player" "~ ~ ~" "${@:3}"
-                        done
-                else
-                        mc say Run cannot exceed 16 loops.
-                fi
+		if [ "$2" ] ; then
+			if [ "$2" -le "16" ] ; then
+				for i in $(seq 1 "$2") ; do
+					mc execute "$player" "~ ~ ~" "${@:3}"
+				done
+			else
+				mc say Run cannot exceed 16 loops.
+			fi
+		else
+			mc say No arguments provided.
+#			mc tellraw "$player" [\"["$ARMORSTAND"] Usage: !run <1-16> <command>\"] # todo: seriously what's going on here
+		fi
 	elif [ "$1" = "level-name" ] ; then
 		mc say "$LEVEL_NAME"
 #	elif [ "$1" = "xyz" ] ; then # todo: trigger like grab, not grab...
@@ -241,7 +252,6 @@ while [ "$running" = "1" ] ; do
 				running="1"
 			fi
 		done
-#	elif echo "$line" | grep -e '^\[..:..:..\] \[Server thread/INFO\]: Done (.*)! For help, type "help" or "?"$' -e "^\[..:..:..\] \[Server thread/INFO\]: \[Server\] $WRAPPER_INIT_START$"; then
 	elif echo "$line" | grep "^\[..:..:..\] \[Server thread/INFO\]: \[Server\] $WRAPPER_INIT_START$" ; then
 		mc_ignore_armorstand kill @e[type=ArmorStand,name="$ARMORSTAND",tag="$ARMORSTAND"]
 		mc_ignore_armorstand summon ArmorStand 0 0 0 "{CustomName:\"$ARMORSTAND\",Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:\"$ARMORSTAND\"]}"
@@ -298,10 +308,10 @@ while [ "$running" = "1" ] ; do
 		executer="$(echo "$line" | sed "s/^.*' as //")"
 		trigger_execute_failure
 	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: \[$ARMORSTAND: Saved the world\]$" ; then # todo: change $ARMORSTAND to $player, make this another trigger
-		zip -r backups/"$LEVEL_NAME"\_"$(date +%Y-%m-%d.%H.%M.%S)".zip "$LEVEL_NAME"
-		cd backups/ # todo: constant for backups directory, possibly create it if it doesn't exist (or just error)
+		zip -r "$BACKUP_DIR"/"$LEVEL_NAME"\_"$(date +%Y-%m-%d.%H.%M.%S)".zip "$MINECRAFT_DIR"/"$LEVEL_NAME"
+		cd "$BACKUP_DIR"/ # maybe: create directory or error if it doesn't exist
 		ls -td "$LEVEL_NAME"* | sed -e '1,7d' | xargs -d '\n' rm
-		cd ..
+		cd "$WRAPPER_DIR"
 		mc save-on
 		mc_ignore_armorstand say Server backup complete.
 	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: Stopping server$" ; then
@@ -325,6 +335,7 @@ done < mc_output
 # won't be run if the wrapper does not exit cleanly, which could potentially
 # bork your world if there is anything that depends on the shutdown commands
 mc say "$WRAPPER_HALT"
+mc kill @e[type=ArmorStand,name="$ARMORSTAND",tag="$ARMORSTAND"]
 running="1"
 while [ "$running" = "1" ] ; do
 	read line
