@@ -1,0 +1,9 @@
+*.txt
+*.json
+*.jar
+server.properties
+logs/
+world/
+backups/
+mc_input
+mc_output
