@@ -1,5 +1,7 @@
 #!/bin/bash
-mkfifo mc_input
-mkfifo mc_output
-tail --follow=name mc_input | minecraft_server > mc_output
+cd "$MINECRAFT_DIR"
+$JAVA_PATH $LAUNCH_ARGS -jar "$SERVER_JAR" nogui # does leaving off nogui allow gui admin while fifo does its thing?
+rm "$WRAPPER_DIR"/dummy
+rm "$WRAPPER_DIR"/"$MC_INPUT"
+rm "$WRAPPER_DIR"/"$MC_OUTPUT"
 exit

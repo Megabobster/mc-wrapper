@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# Options:
+PREFIX="!"
+ARMORSTAND="-"
+MINECRAFT_DIR="${PWD}" # no trailing slash, be careful about quotes here
+BACKUP_DIR="${PWD}/backups"
+SERVER_JAR="minecraft_server.jar"
+JAVA_PATH="java"
+LAUNCH_ARGS="-Xmx1024M -Xms1024M"
+SCRIPT_NAME="mc_wrapper.sh"
+TRIGGER="${PWD}/trigger"
+MC_INPUT="mc_input"
+MC_OUTPUT="mc_output"
+
+# Tranlsation:
+WRAPPER_INIT_START="Wrapper initializing."
+WRAPPER_INIT_DONE="Wrapper initialized."
+WRAPPER_HALT="Wrapper halted."
+
+ERR_NEW_CONFIG="Generating new config file ($CONFIG)..."
+ERR_SCRIPT_MISSING="This program must be run from within the directory containing it, and it must be named $SCRIPT_NAME (configurable in $CONFIG), exiting..."
+ERR_TRIGGER_MISSING="Trigger folder ($TRIGGER) not present or renamed, exiting..."
+
+ERR_GRAB_INPUT_NOT_RECEIVED="Input not received in grab"
+ERR_MULTIPLE_GRAB_INPUTS="Too many inputs in grab"
+ERR_UNEXPECTED_GRAB_INPUT="Unexpected input in grab"
+ERR_INVALID_GRAB="No grab defined with name"
+ERR_INVALID_MESSAGE_COMMAND="Invalid command"

@@ -1,13 +1,15 @@
 #!/bin/bash
 
+# notes:
 # google minecraft server fifo for other people's projects? not really helpful
 # maybe: look up minecraft /trigger command, maybe use that to help with triggers and grabs, possibly need to hardcore use that since op might be required?
 # todo: ops support/permission levels
 # todo: stderr https://google.github.io/styleguide/shell.xml?showone=STDOUT_vs_STDERR#STDOUT_vs_STDERR
 # todo: add constants (variables) for where files/fifos are stored and what tmux sessions are named
 # maybe: constants in separate config file/"include"
-#	every trigger in a separate include...? that would be awesome
 #	https://google.github.io/styleguide/shell.xml?showone=Constants_and_Environment_Variable_Names#Constants_and_Environment_Variable_Names
+#	idea for plugins: source plugins/*
+#	would load everything in plugins directory at a certain point in the script, might be worth looking into
 # maybe: minecraft_server.jar >> mc_output.txt then in scripts tail -f mc_output.txt might allow multiple scripts simultaneously
 #	read current directory, check if it's scripts directory, autostart scripts, that kind of thing
 # maybe: figure out "if" regex to reduce echo $line | grep $* and echo $line | sed s/// if at all possible (bash substitution regex/glob? see man [)
@@ -20,32 +22,10 @@
 #	http://tldp.org/LDP/abs/html/special-chars.html (ctrl+f "cat -"), or cat > mc_input (if I can get it to terminate when the server does)
 # todo: let the player run a backup and give it a clickable link for download, unless a backup has been run in the last [time interval]
 # todo: way to get player coordinates (summon a marker, tp marker to $player, get marker's xyz (tp to ~ ~ ~) and entitydata (for rotation)
+#	@e[type=ArmorStand,name="$PLAYER",tag="$ARMORSTAND"] maybe?
 #	do as much of this as possible in game to make it faster
 #	then triiiiiiiiig
 # todo: write clear for block inventories
-
-# Options:
-PREFIX="!"
-ARMORSTAND="-"
-MINECRAFT_DIR="/home/bob/Programs/minecraft_server" # no trailing slash, be careful about quotes here
-BACKUP_DIR="/home/bob/Programs/mc_wrapper/backups"
-SCRIPT_NAME="mc_wrapper.sh"
-TRIGGER="trigger"	# todo: figure out if it should be "$TRIGGER/dir" or "$TRIGGER"/dir or just $TRIGGER/dir
-
-# Not Options?:
-WRAPPER_DIR="$PWD" # todo: figure this the hell out, I think this script must be run from PWD to function
-LEVEL_NAME="$(grep level-name= $MINECRAFT_DIR/server.properties | sed 's/level-name=//')"
-
-# Tranlsation:
-ERR_GRAB_INPUT_NOT_RECEIVED="Input not received in grab"
-ERR_MULTIPLE_GRAB_INPUTS="Too many inputs in grab"
-ERR_UNEXPECTED_GRAB_INPUT="Unexpected input in grab"
-ERR_INVALID_GRAB="No grab defined with name"
-ERR_INVALID_MESSAGE_COMMAND="Invalid command"
-
-WRAPPER_INIT_START="Wrapper initializing."
-WRAPPER_INIT_DONE="Wrapper initialized."
-WRAPPER_HALT="Wrapper halted."
 
 # function mc runs arbitrary minecraft command
 # usage: mc <arbitrary minecraft command>
@@ -56,7 +36,7 @@ WRAPPER_HALT="Wrapper halted."
 # just make sure to escape or quote special characters if necessary
 
 function mc() {
-	echo "execute @r[type=ArmorStand,name=$ARMORSTAND,tag=$ARMORSTAND] ~ ~ ~ $*" > mc_input # $* necessary to preserve spaces
+	echo "execute @r[type=ArmorStand,name=$ARMORSTAND,tag=$ARMORSTAND] ~ ~ ~ $*" > "$MC_INPUT" # $* necessary to preserve spaces
 }
 
 # function mc_ignore_armorstand is identical to mc, however, it executes as the server and
@@ -64,7 +44,7 @@ function mc() {
 # mc is fancier, mc_ignore_armorstand will always work
 
 function mc_ignore_armorstand() {
-	echo "$*" > mc_input
+	echo "$*" > "$MC_INPUT"
 }
 
 # function grab runs arbitrary minecraft command and gets arbitrary output
@@ -95,16 +75,47 @@ function grab() {
 # usage: $set_score_zero=<objective>
 # use this to prevent $player spamming things and breaking them
 
-if ! ls | grep -q "$SCRIPT_NAME" ; then
-	echo "This program must be run from within the directory containing"
-	echo "$SCRIPT_NAME, exiting..."
-	exit
+# Not Options?:
+DEFAULTS="default_config.txt"
+CONFIG="config.txt"
+WRAPPER_DIR="$PWD" # todo: figure this the hell out, I think this script must be run from PWD to function
+
+# Load Config:
+if ! [ -a "$WRAPPER_DIR"/"$DEFAULTS" ] ; then
+	echo "Default configuration ($DEFAULTS) not present or renamed, exiting..."
+	exit # maybe: put default settings here instead of in a separate file, then generate config.txt
 fi
-if ! [ -d "$TRIGGER" ] ; then
-	echo "Trigger folder ($TRIGGER) not present or renamed, exiting..."
+. "$WRAPPER_DIR"/"$DEFAULTS"
+if ! [ -a "$WRAPPER_DIR"/"$CONFIG" ] ; then
+	echo "$ERR_NEW_CONFIG"
+	cp "$WRAPPER_DIR"/"$DEFAULTS" "$WRAPPER_DIR"/"$CONFIG" # todo: make this fancier?
+fi
+. "$WRAPPER_DIR"/"$CONFIG"
+
+# Not Option?:
+LEVEL_NAME="$(grep level-name= $MINECRAFT_DIR/server.properties | sed 's/level-name=//')"
+
+# Script Initialization:
+if ! [ -a "$SCRIPT_NAME" ] ; then
+	echo "$ERR_SCRIPT_MISSING"
 	exit
+elif ! [ -d "$TRIGGER" ] ; then
+	echo "$ERR_TRIGGER_MISSING"
+	exit
+# start server if there's no mc.pid, wrapper.pid, mc_input, or mc_output
+# if mc.pid, mc_input, or mc_output exist (but not all 3), error out, possibly prompt to solve
+# in that case, also check for and deal with an orphaned wrapper.pid
+# start wrapper if there is mc.pid, mc_input, and mc_output but no wrapper.pid
+# if all four exist, error out, possibly prompt to solve
+# wrapper.pid maybe made at beggining of file so that check might have to be sooner
+elif ! [ -a dummy ] ; then # todo: replace dummy with what's described above
+	mkfifo "$WRAPPER_DIR"/"$MC_INPUT"		# don't let server run if server's running/wrapper run if wrapper's running
+	mkfifo "$WRAPPER_DIR"/"$MC_OUTPUT"		# detect and attempt to resolve bad shutdowns (pid/mc_io still exist)
+	tail --follow=name "$MC_INPUT" | . mc_start.sh > "$MC_OUTPUT" & # todo: maybe use cat instead of tail, also make this not output stuff on tail's end
+	echo "foo" > dummy # make pid file here, don't forget to remove it in mc_start.sh
 fi
 
+# Start Wrapper:
 mc_ignore_armorstand say "$WRAPPER_INIT_START"
 running="1"
 while [ "$running" = "1" ] ; do
@@ -130,7 +141,7 @@ while [ "$running" = "1" ] ; do
 # </end commands to be run once>
 		running="0"
 	fi
-done < mc_output
+done < "$MC_OUTPUT"
 mc say "$WRAPPER_INIT_DONE"
 
 running="1"
@@ -161,6 +172,7 @@ while [ "$running" = "1" ] ; do
 		message="$(echo "$line" | sed 's/^[^>]*> //')"
 		if echo "$message" | grep -q "^$PREFIX.*$" ; then
 			message="$(echo "$line" | sed "s/^[^>]*> $PREFIX//")" # todo: make this based on $message instead of $line, also maybe use $command or something
+#			message="$(echo "$message" | sed "s/^[^"$PREFIX"]*"$PREFIX"//")" # variable expansion and quoting...brace quotes might fix this https://google.github.io/styleguide/shell.xml?showone=Variable_expansion#Variable_expansion
 			. "$TRIGGER/global_message_prefix" $message
 		else
 			. "$TRIGGER/global_message"
@@ -197,7 +209,7 @@ while [ "$running" = "1" ] ; do
 		mc scoreboard players set "$player" "$set_score_zero" 0
 		set_score_zero=
 	fi
-done < mc_output
+done < "$MC_OUTPUT"
 # shutdown commands could theoretically be put here but be very careful as they
 # won't be run if the wrapper does not exit cleanly, which could potentially
 # bork your world if there is anything that depends on the shutdown commands
@@ -207,12 +219,8 @@ running="1"
 while [ "$running" = "1" ] ; do
 	read line
 	echo "$line"
-	if echo "$line" | grep -q "\[..:..:..\] \[Server thread/INFO\]: \[$ARMORSTAND\] $WRAPPER_HALT" ; then
-		running="0"
-	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: Saving worlds$" ; then
-		rm mc_input
-		rm mc_output
+	if echo "$line" | grep -q -e "\[..:..:..\] \[Server thread/INFO\]: \[$ARMORSTAND\] $WRAPPER_HALT" -e "^\[..:..:..\] \[Server thread/INFO\]: Saving worlds$" ; then
 		running="0"
 	fi
-done < mc_output
+done < "$MC_OUTPUT"
 exit
