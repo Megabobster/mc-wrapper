@@ -22,7 +22,7 @@
 #	http://tldp.org/LDP/abs/html/special-chars.html (ctrl+f "cat -"), or cat > mc_input (if I can get it to terminate when the server does)
 # todo: let the player run a backup and give it a clickable link for download, unless a backup has been run in the last [time interval]
 # todo: way to get player coordinates (summon a marker, tp marker to $player, get marker's xyz (tp to ~ ~ ~) and entitydata (for rotation)
-#	@e[type=ArmorStand,name="$PLAYER",tag="$ARMORSTAND"] maybe?
+#	@e[type=armor_stand,name="$PLAYER",tag="$ARMORSTAND"] maybe?
 #	do as much of this as possible in game to make it faster
 #	then triiiiiiiiig
 # todo: write clear for block inventories
@@ -36,7 +36,7 @@
 # just make sure to escape or quote special characters if necessary
 
 function mc() {
-	echo "execute @r[type=ArmorStand,name=$ARMORSTAND,tag=$ARMORSTAND] ~ ~ ~ $*" > "$MC_INPUT" # $* necessary to preserve spaces
+	echo "execute @r[type=armor_stand,name=$ARMORSTAND,tag=$ARMORSTAND] ~ ~ ~ $*" > "$MC_INPUT" # $* necessary to preserve spaces
 }
 
 # function mc_ignore_armorstand is identical to mc, however, it executes as the server and
@@ -133,8 +133,8 @@ while [ "$running" = "1" ] ; do
 			fi
 		done
 	elif echo "$line" | grep "^\[..:..:..\] \[Server thread/INFO\]: \[Server\] $WRAPPER_INIT_START$" ; then
-		mc_ignore_armorstand kill @e[type=ArmorStand,name="$ARMORSTAND",tag="$ARMORSTAND"]
-		mc_ignore_armorstand summon ArmorStand 0 0 0 "{CustomName:\"$ARMORSTAND\",Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:\"$ARMORSTAND\"]}"
+		mc_ignore_armorstand kill @e[type=armor_stand,name="$ARMORSTAND",tag="$ARMORSTAND"]
+		mc_ignore_armorstand summon armor_stand 0 0 0 "{CustomName:\"$ARMORSTAND\",Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:\"$ARMORSTAND\"]}"
 # todo: constant for worldspawn instead of 0 0 0
 # mc_ignore_armorstand isn't necessary after this point, it just creates less errors if commands fail (like if the scoreboard already exists)
 		mc_ignore_armorstand scoreboard objectives add grab dummy
@@ -153,32 +153,33 @@ while [ "$running" = "1" ] ; do
 # <the magic>
 	read line
 	echo "$line"
-	if echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: \[.*: Set score of .* for player .* to .*]$' ; then
-		executer="$(echo "$line" | sed 's/^.*\]: \[//;s/: Set.*$//')"
-		objective="$(echo "$line" | sed 's/^.*score of //;s/ for player.*$//')"
-		player="$(echo "$line" | sed 's/^.*for player //;s/ to .*$//')"
-		score="$(echo "$line" | sed 's/^.* to //;s/\]$//')"
-		if [ "$executer" = "$ARMORSTAND" -a "$objective" = "grab" -a "$score" = "1" ] ; then
-			grab="$player"
-			if echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Set score of grab for player fail to 0$' ; then
-				mc say "$ERR_GRAB_INPUT_NOT_RECEIVED" "$grab".
-			elif ! echo "$fail" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Set score of grab for player fail to 0$' ; then
-				mc say "$ERR_MULTIPLE_GRAB_INPUTS" "$grab".
+	if echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: \[.*: .*\]" ; then
+		executer="$(echo "$line" | sed 's/^.*\]: \[//;s/: .*$//')"
+		result="$(echo "$line" | sed 's/^.*: //;s/\]$//')"
+		if echo "$result" | grep -q "^Set score of .* for player .* to .*$" ; then
+			objective="$(echo "$line" | sed 's/^.*score of //;s/ for player.*$//')"
+			player="$(echo "$line" | sed 's/^.*for player //;s/ to .*$//')"
+			score="$(echo "$line" | sed 's/^.* to //;s/\]$//')"
+			if [ "$executer" = "$ARMORSTAND" -a "$objective" = "grab" -a "$score" = "1" ] ; then
+				grab="$player"
+				if echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Set score of grab for player fail to 0$' ; then
+					mc say "$ERR_GRAB_INPUT_NOT_RECEIVED" "$grab".
+				elif ! echo "$fail" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Set score of grab for player fail to 0$' ; then
+					mc say "$ERR_MULTIPLE_GRAB_INPUTS" "$grab".
+				else
+					. "$TRIGGER/grab"
+				fi
 			else
-				. "$TRIGGER/grab"
+				. "$TRIGGER/scoreboard_value"
 			fi
-		else
-			. "$TRIGGER/scoreboard_value"
-		fi
-	elif echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: <.*> .*$' ; then
-		player="$(echo "$line" | sed 's/^.*<//;s/>.*$//')"
-		message="$(echo "$line" | sed 's/^[^>]*> //')"
-		if echo "$message" | grep -q "^$PREFIX.*$" ; then
-			message="$(echo "$line" | sed "s/^[^>]*> $PREFIX//")" # todo: make this based on $message instead of $line, also maybe use $command or something
-#			message="$(echo "$message" | sed "s/^[^"$PREFIX"]*"$PREFIX"//")" # variable expansion and quoting...brace quotes might fix this https://google.github.io/styleguide/shell.xml?showone=Variable_expansion#Variable_expansion
-			. "$TRIGGER/global_message_prefix" $message
-		else
-			. "$TRIGGER/global_message"
+		elif echo "$result" | grep -q "^Teleported .* to .*, .*, .*$" ; then
+			player="$(echo "$result" | sed 's/^Teleported //;s/ to.*$//')"
+			x="$(echo "$result" | sed 's/^.*to //;s/, .*, .*$//')"
+			y="$(echo "$result" | sed "s/^.*to $x, //;s/, .*$//")"
+			z="$(echo "$result" | sed 's/^.*, //')"
+			. "$TRIGGER/teleport"
+		elif echo "$result" | grep -q "^Saved the world$" ; then # todo: another trigger, tidy this up
+			. "$TRIGGER/world_save"
 		fi
 	elif echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: \[.*\] .*$' ; then
 		trim="$(echo "$line" | sed 's/^\[..:..:..\] \[Server thread\/INFO\]: \[//')" # todo: make this regex not suck
@@ -189,13 +190,16 @@ while [ "$running" = "1" ] ; do
 		command="$(echo "$line" | sed "s/^[^']*'//;s/' as .*$//")"
 		executer="$(echo "$line" | sed "s/^.*' as //")"
 		. "$TRIGGER/execute_failure"
-	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: \[$ARMORSTAND: Saved the world\]$" ; then # todo: change $ARMORSTAND to $player, make this another trigger
-		zip -r "$BACKUP_DIR"/"$LEVEL_NAME"\_"$(date +%Y-%m-%d.%H.%M.%S)".zip "$MINECRAFT_DIR"/"$LEVEL_NAME"
-		cd "$BACKUP_DIR" # maybe: create directory or error if it doesn't exist
-		ls -td "$LEVEL_NAME"* | sed -e '1,7d' | xargs -d '\n' rm
-		cd "$WRAPPER_DIR"
-		mc save-on
-		mc_ignore_armorstand say Server backup complete.
+	elif echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: <.*> .*$' ; then
+		player="$(echo "$line" | sed 's/^.*<//;s/>.*$//')"
+		message="$(echo "$line" | sed 's/^[^>]*> //')"
+		if echo "$message" | grep -q "^$PREFIX.*$" ; then
+			message="$(echo "$line" | sed "s/^[^>]*> $PREFIX//")" # todo: make this based on $message instead of $line, also maybe use $command or something
+#			message="$(echo "$message" | sed "s/^[^"$PREFIX"]*"$PREFIX"//")" # variable expansion and quoting...brace quotes might fix this https://google.github.io/styleguide/shell.xml?showone=Variable_expansion#Variable_expansion
+			. "$TRIGGER/global_message_prefix" $message
+		else
+			. "$TRIGGER/global_message"
+		fi
 	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: Stopping server$" ; then
 		running="0"
 	# do not put an else here unless you explicitly want to run a command on every line the server outputs
@@ -217,7 +221,7 @@ done < "$MC_OUTPUT"
 # won't be run if the wrapper does not exit cleanly, which could potentially
 # bork your world if there is anything that depends on the shutdown commands
 mc say "$WRAPPER_HALT"
-mc kill @e[type=ArmorStand,name="$ARMORSTAND",tag="$ARMORSTAND"]
+mc kill @e[type=armor_stand,name="$ARMORSTAND",tag="$ARMORSTAND"]
 running="1"
 while [ "$running" = "1" ] ; do
 	read line

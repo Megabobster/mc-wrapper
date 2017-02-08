@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# triggers when an entity is teleported
+# variables are as follows:
+# ["$executer": Teleported "$player" to "$x", "$y", "$z"]
+
+if [ "$player" = "Pig" ] ; then
+	mc say "Teleported $player to $x, $y, $z.
+fi

@@ -14,4 +14,6 @@ elif [ "$message" = "foo" ] ; then
 elif echo "$message" | grep -q -e 'https\?://.* ' -e 'https\?://.*$' ; then
 	url="$(echo "$message" | sed 's|^.*https?://|https?://|;s| .*$||')"
 	mc tellraw @a [\"[-] [\",\{\"text\":\"link\",\"underlined\":true,\"clickEvent\":\{\"action\":\"open_url\",\"value\":\""$url"\"\}\},\"]\"]
+elif [ "$message" = "test" ] ; then
+	mc_ignore_armorstand entitydata @e[tag=!-] {}
 fi
