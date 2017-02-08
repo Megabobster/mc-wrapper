@@ -81,39 +81,42 @@ CONFIG="config.txt"
 WRAPPER_DIR="$PWD" # todo: figure this the hell out, I think this script must be run from PWD to function
 
 # Load Config:
-if ! [ -a "$WRAPPER_DIR"/"$DEFAULTS" ] ; then
+if ! [ -e "$DEFAULTS" ] ; then
 	echo "Default configuration ($DEFAULTS) not present or renamed, exiting..."
 	exit # maybe: put default settings here instead of in a separate file, then generate config.txt
 fi
-. "$WRAPPER_DIR"/"$DEFAULTS"
-if ! [ -a "$WRAPPER_DIR"/"$CONFIG" ] ; then
+. "$DEFAULTS"
+if ! [ -e "$CONFIG" ] ; then
 	echo "$ERR_NEW_CONFIG"
-	cp "$WRAPPER_DIR"/"$DEFAULTS" "$WRAPPER_DIR"/"$CONFIG" # todo: make this fancier?
+	cp "$DEFAULTS" "$CONFIG" # todo: make this fancier?
 fi
-. "$WRAPPER_DIR"/"$CONFIG"
+. "$CONFIG"
 
 # Not Option?:
 LEVEL_NAME="$(grep level-name= $MINECRAFT_DIR/server.properties | sed 's/level-name=//')"
 
 # Script Initialization:
-if ! [ -a "$SCRIPT_NAME" ] ; then
+if ! [ -e "$SCRIPT_NAME" ] ; then
 	echo "$ERR_SCRIPT_MISSING"
 	exit
 elif ! [ -d "$TRIGGER" ] ; then
 	echo "$ERR_TRIGGER_MISSING"
 	exit
-# start server if there's no mc.pid, wrapper.pid, mc_input, or mc_output
-# if mc.pid, mc_input, or mc_output exist (but not all 3), error out, possibly prompt to solve
-# in that case, also check for and deal with an orphaned wrapper.pid
-# start wrapper if there is mc.pid, mc_input, and mc_output but no wrapper.pid
-# if all four exist, error out, possibly prompt to solve
-# wrapper.pid maybe made at beggining of file so that check might have to be sooner
-elif ! [ -a dummy ] ; then # todo: replace dummy with what's described above
-	mkfifo "$WRAPPER_DIR"/"$MC_INPUT"		# don't let server run if server's running/wrapper run if wrapper's running
-	mkfifo "$WRAPPER_DIR"/"$MC_OUTPUT"		# detect and attempt to resolve bad shutdowns (pid/mc_io still exist)
+elif [ -e "$WRAPPER_PIDFILE" ] ; then
+	echo "$ERR_WRAPPER_RUNNING" # maybe: double check pid to see if it's running
+	exit
+elif [ -e "$SERVER_PIDFILE" -a -e "$MC_INPUT" -a -e "$MC_OUTPUT" ] ; then
+	echo "$ERR_SERVER_RUNNING" # maybe: double check pid to see if it's running
+elif [ -e "$SERVER_PIDFILE" -o -e "$MC_INPUT" -o -e "$MC_OUTPUT" ] ; then
+	echo "$ERR_BAD_EXIT" # maybe: delete leftovers
+	exit
+else # only runs if there is no mc_io and both pidfiles aren't present
+	mkfifo "$MC_INPUT"
+	mkfifo "$MC_OUTPUT"
 	tail --follow=name "$MC_INPUT" | . mc_start.sh > "$MC_OUTPUT" & # todo: maybe use cat instead of tail, also make this not output stuff on tail's end
-	echo "foo" > dummy # make pid file here, don't forget to remove it in mc_start.sh
+	echo "SERVER_PID=$!" > "$SERVER_PIDFILE"
 fi
+echo "WRAPPER_PID=$$" > "$WRAPPER_PIDFILE"
 
 # Start Wrapper:
 mc_ignore_armorstand say "$WRAPPER_INIT_START"
@@ -132,8 +135,8 @@ while [ "$running" = "1" ] ; do
 	elif echo "$line" | grep "^\[..:..:..\] \[Server thread/INFO\]: \[Server\] $WRAPPER_INIT_START$" ; then
 		mc_ignore_armorstand kill @e[type=ArmorStand,name="$ARMORSTAND",tag="$ARMORSTAND"]
 		mc_ignore_armorstand summon ArmorStand 0 0 0 "{CustomName:\"$ARMORSTAND\",Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:\"$ARMORSTAND\"]}"
-		# todo: constant for worldspawn
-		# mc_ignore_armorstand isn't necessary after this point, it just creates less errors if commands fail (like if the scoreboard already exists)
+# todo: constant for worldspawn instead of 0 0 0
+# mc_ignore_armorstand isn't necessary after this point, it just creates less errors if commands fail (like if the scoreboard already exists)
 		mc_ignore_armorstand scoreboard objectives add grab dummy
 # <put commands to be run once on script init here; use this with caution>
 		mc_ignore_armorstand scoreboard objectives add blend dummy
@@ -188,7 +191,7 @@ while [ "$running" = "1" ] ; do
 		. "$TRIGGER/execute_failure"
 	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: \[$ARMORSTAND: Saved the world\]$" ; then # todo: change $ARMORSTAND to $player, make this another trigger
 		zip -r "$BACKUP_DIR"/"$LEVEL_NAME"\_"$(date +%Y-%m-%d.%H.%M.%S)".zip "$MINECRAFT_DIR"/"$LEVEL_NAME"
-		cd "$BACKUP_DIR"/ # maybe: create directory or error if it doesn't exist
+		cd "$BACKUP_DIR" # maybe: create directory or error if it doesn't exist
 		ls -td "$LEVEL_NAME"* | sed -e '1,7d' | xargs -d '\n' rm
 		cd "$WRAPPER_DIR"
 		mc save-on
@@ -221,6 +224,7 @@ while [ "$running" = "1" ] ; do
 	echo "$line"
 	if echo "$line" | grep -q -e "\[..:..:..\] \[Server thread/INFO\]: \[$ARMORSTAND\] $WRAPPER_HALT" -e "^\[..:..:..\] \[Server thread/INFO\]: Saving worlds$" ; then
 		running="0"
+		rm "$WRAPPER_PIDFILE"
 	fi
 done < "$MC_OUTPUT"
 exit

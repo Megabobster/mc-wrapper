@@ -12,6 +12,8 @@ SCRIPT_NAME="mc_wrapper.sh"
 TRIGGER="${PWD}/trigger"
 MC_INPUT="mc_input"
 MC_OUTPUT="mc_output"
+WRAPPER_PIDFILE="mc_wrapper.pid"
+SERVER_PIDFILE="minecraft_server.pid"
 
 # Tranlsation:
 WRAPPER_INIT_START="Wrapper initializing."
@@ -19,8 +21,11 @@ WRAPPER_INIT_DONE="Wrapper initialized."
 WRAPPER_HALT="Wrapper halted."
 
 ERR_NEW_CONFIG="Generating new config file ($CONFIG)..."
+ERR_WRAPPER_RUNNING="Wrapper already running or pidfile ($WRAPPER_PIDFILE) present, exiting..."
 ERR_SCRIPT_MISSING="This program must be run from within the directory containing it, and it must be named $SCRIPT_NAME (configurable in $CONFIG), exiting..."
 ERR_TRIGGER_MISSING="Trigger folder ($TRIGGER) not present or renamed, exiting..."
+ERR_SERVER_RUNNING="Server already running, starting wrapper..."
+ERR_BAD_EXIT="One or more files ($MC_INPUT, $MC_OUTPUT, or $SERVER_PIDFILE) still present from incomplete exit."
 
 ERR_GRAB_INPUT_NOT_RECEIVED="Input not received in grab"
 ERR_MULTIPLE_GRAB_INPUTS="Too many inputs in grab"
