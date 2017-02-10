@@ -25,10 +25,9 @@ if [ "$grab" = "blend" ] ; then
 	else # make sure to put this else at the end of each grab
 		mc say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab".
 	fi
-#elif [ "$grab" = "xyz" ] ; then
-#	if echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: \[-: Teleported Armor Stand to .*, .*, .*\]$' ; then
+#elif [ "$grab" = "trig" ] ; then
+#	if echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: The data tag did not change: .*$' ; then
 #		mc say beep
-#		kill @e[type=ArmorStand,name=xyz,tag=xyz]
 #	else
 #		mc say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab".
 #	fi

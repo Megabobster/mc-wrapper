@@ -7,3 +7,4 @@ server.properties
 *.txt
 *.json
 *.jar
+*.pid

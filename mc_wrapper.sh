@@ -153,43 +153,57 @@ while [ "$running" = "1" ] ; do
 # <the magic>
 	read line
 	echo "$line"
-	if echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: \[.*: .*\]" ; then
-		executer="$(echo "$line" | sed 's/^.*\]: \[//;s/: .*$//')"
-		result="$(echo "$line" | sed 's/^.*: //;s/\]$//')"
-		if echo "$result" | grep -q "^Set score of .* for player .* to .*$" ; then
-			objective="$(echo "$line" | sed 's/^.*score of //;s/ for player.*$//')"
-			player="$(echo "$line" | sed 's/^.*for player //;s/ to .*$//')"
-			score="$(echo "$line" | sed 's/^.* to //;s/\]$//')"
-			if [ "$executer" = "$ARMORSTAND" -a "$objective" = "grab" -a "$score" = "1" ] ; then
-				grab="$player"
-				if echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Set score of grab for player fail to 0$' ; then
-					mc say "$ERR_GRAB_INPUT_NOT_RECEIVED" "$grab".
-				elif ! echo "$fail" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Set score of grab for player fail to 0$' ; then
-					mc say "$ERR_MULTIPLE_GRAB_INPUTS" "$grab".
+	if echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: \[.*\].*$" ; then
+		# todo: simplify variables here
+		if echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: \[.*: .*\]" ; then
+			executor="$(echo "$line" | sed 's/^.*\]: \[//;s/: .*$//')"
+			result="$(echo "$line" | sed 's/^.*: //;s/\]$//')"
+			if echo "$result" | grep -q "^Set score of .* for player .* to .*$" ; then
+				objective="$(echo "$line" | sed 's/^.*score of //;s/ for player.*$//')"
+				player="$(echo "$line" | sed 's/^.*for player //;s/ to .*$//')"
+				score="$(echo "$line" | sed 's/^.* to //;s/\]$//')"
+				if [ "$executor" = "$ARMORSTAND" -a "$objective" = "grab" -a "$score" = "1" ] ; then
+					grab="$player"
+					if echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Set score of grab for player fail to 0$' ; then
+						mc say "$ERR_GRAB_INPUT_NOT_RECEIVED" "$grab".
+					elif ! echo "$fail" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Set score of grab for player fail to 0$' ; then
+						mc say "$ERR_MULTIPLE_GRAB_INPUTS" "$grab".
+					else
+						. "$TRIGGER/grab"
+					fi
 				else
-					. "$TRIGGER/grab"
+					. "$TRIGGER/scoreboard_value"
 				fi
-			else
-				. "$TRIGGER/scoreboard_value"
+			elif echo "$result" | grep -q "^Teleported .* to .*$" ; then
+				player="$(echo "$result" | sed 's/^Teleported //;s/ to.*$//')"
+				destination="$(echo "$result" | sed 's/^.* to //')"
+				if echo "$destination" | grep -q "^.*, .*, .*$" ; then
+					x="$(echo "$result" | sed 's/^.* to //;s/, .*, .*$//')"
+					y="$(echo "$result" | sed "s/^.* to $x, //;s/, .*$//")"
+					z="$(echo "$result" | sed 's/^.*, //')"
+					. "$TRIGGER/teleport"
+				else
+					. "$TRIGGER/teleport_entity"
+				fi
+			elif echo "$result" | grep -q "^Entity data updated to: .*$" ; then
+				pass # todo: this
+			elif echo "$result" | grep -q "^Saved the world$" ; then
+				. "$TRIGGER/world_save"
 			fi
-		elif echo "$result" | grep -q "^Teleported .* to .*, .*, .*$" ; then
-			player="$(echo "$result" | sed 's/^Teleported //;s/ to.*$//')"
-			x="$(echo "$result" | sed 's/^.*to //;s/, .*, .*$//')"
-			y="$(echo "$result" | sed "s/^.*to $x, //;s/, .*$//")"
-			z="$(echo "$result" | sed 's/^.*, //')"
-			. "$TRIGGER/teleport"
-		elif echo "$result" | grep -q "^Saved the world$" ; then # todo: another trigger, tidy this up
-			. "$TRIGGER/world_save"
+		elif echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: \[.*\] .*$' ; then
+			trim="$(echo "$line" | sed 's/^\[..:..:..\] \[Server thread\/INFO\]: \[//')" # todo: make this regex not suck
+			player="$(echo "$trim" | sed 's/\].*//')" # I think this can match with square brackets in the player's message
+			message="$(echo "$trim" | sed 's/.*[^\]]*] //')"
+			. "$TRIGGER/say_command"
 		fi
-	elif echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: \[.*\] .*$' ; then
-		trim="$(echo "$line" | sed 's/^\[..:..:..\] \[Server thread\/INFO\]: \[//')" # todo: make this regex not suck
-		player="$(echo "$trim" | sed 's/\].*//')"
-		message="$(echo "$trim" | sed 's/.*[^\]]*] //')"
-		. "$TRIGGER/say_command"
 	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: Failed to execute '.*' as .*$" ; then
 		command="$(echo "$line" | sed "s/^[^']*'//;s/' as .*$//")"
-		executer="$(echo "$line" | sed "s/^.*' as //")"
+		executor="$(echo "$line" | sed "s/^.*' as //")"
 		. "$TRIGGER/execute_failure"
+	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: The data tag did not change: .*$" ; then
+		nbtdata="$(echo "$line" | sed 's/^\[..:..:..\] \[Server thread\/INFO\]: The data tag did not change: //')"
+		#. "$TRIGGER/read_nbt"
+		mc_ignore_armorstand "$("$TRIGGER/read_nbt.py" "$nbtdata")" # todo: fix how newlines behave in mc command
 	elif echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: <.*> .*$' ; then
 		player="$(echo "$line" | sed 's/^.*<//;s/>.*$//')"
 		message="$(echo "$line" | sed 's/^[^>]*> //')"
