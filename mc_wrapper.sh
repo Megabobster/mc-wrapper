@@ -27,7 +27,7 @@
 #	then triiiiiiiiig
 # todo: write clear for block inventories
 
-# function mc runs arbitrary minecraft command
+# function mc runs arbitrary minecraft commands
 # usage: mc <arbitrary minecraft command>
 # like so: mc setblock 1 2 3 air
 # or like so: mc execute @r "~ ~ ~" tp @p "~ ~1 ~"
@@ -36,7 +36,9 @@
 # just make sure to escape or quote special characters if necessary
 
 function mc() {
-	echo "execute @r[type=armor_stand,name=$ARMORSTAND,tag=$ARMORSTAND] ~ ~ ~ $*" > "$MC_INPUT" # $* necessary to preserve spaces
+	echo "$*" | while read test ; do # $* necessary to preserve spaces. todo: better var name than test
+		echo "execute @r[type=armor_stand,name=$ARMORSTAND,tag=$ARMORSTAND] ~ ~ ~ $test" > "$MC_INPUT"
+	done
 }
 
 # function mc_ignore_armorstand is identical to mc, however, it executes as the server and
@@ -44,7 +46,9 @@ function mc() {
 # mc is fancier, mc_ignore_armorstand will always work
 
 function mc_ignore_armorstand() {
-	echo "$*" > "$MC_INPUT"
+	echo "$*" | while read test ; do
+		echo "$test" > "$MC_INPUT"
+	done
 }
 
 # function grab runs arbitrary minecraft command and gets arbitrary output
@@ -203,7 +207,7 @@ while [ "$running" = "1" ] ; do
 	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: The data tag did not change: .*$" ; then
 		nbtdata="$(echo "$line" | sed 's/^\[..:..:..\] \[Server thread\/INFO\]: The data tag did not change: //')"
 		#. "$TRIGGER/read_nbt"
-		mc_ignore_armorstand "$("$TRIGGER/read_nbt.py" "$nbtdata")" # todo: fix how newlines behave in mc command
+		mc "$("$TRIGGER/read_nbt.py" "$nbtdata")"
 	elif echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: <.*> .*$' ; then
 		player="$(echo "$line" | sed 's/^.*<//;s/>.*$//')"
 		message="$(echo "$line" | sed 's/^[^>]*> //')"
