@@ -97,7 +97,7 @@ fi
 . "$CONFIG"
 
 # Not Option?:
-LEVEL_NAME="$(grep level-name= $MINECRAFT_DIR/server.properties | sed 's/level-name=//')"
+LEVEL_NAME="$(grep level-name= $MINECRAFT_DIR/server.properties | sed 's/^level-name=//')"
 
 # Script Initialization:
 if ! [ -e "$SCRIPT_NAME" ] ; then
@@ -159,19 +159,18 @@ while [ "$running" = "1" ] ; do
 	echo "$line"
 	line_trimmed="$(echo "$line" | sed 's/^\(\[..:..:..]\) \(\[Server thread\/INFO]:\) \(.*\)$/\3/')"
 	if echo "$line_trimmed" | grep -q "^\[.*\].*$" ; then
-		executor="$(echo "$line_trimmed" | sed 's/^\[\([^]:]*\)[]:] \(.*\)$/\1/')"
-		# todo: simplify variables here
+		executor="$(echo "$line_trimmed" | sed 's/^\[\([^]:]*\)[]:] .*$/\1/')"
 		if echo "$line_trimmed" | grep -q "^\[.*: .*\]$" ; then
 			result="$(echo "$line_trimmed" | sed 's/^\[[^:]*: \(.*\)\]$/\1/')"
 			if echo "$result" | grep -q "^Set score of .* for player .* to .*$" ; then
-				objective="$(echo "$line" | sed 's/^.*score of //;s/ for player.*$//')"
-				player="$(echo "$line" | sed 's/^.*for player //;s/ to .*$//')"
-				score="$(echo "$line" | sed 's/^.* to //;s/\]$//')"
+				objective="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\1/')"
+				player="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\2/')"
+				score="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\3/')"
 				if [ "$executor" = "$ARMORSTAND" -a "$objective" = "grab" -a "$score" = "1" ] ; then
 					grab="$player"
-					if echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Set score of grab for player fail to 0$' ; then
+					if echo "$last" | grep -q '^Set score of grab for player fail to 0$' ; then
 						mc say "$ERR_GRAB_INPUT_NOT_RECEIVED" "$grab".
-					elif ! echo "$fail" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Set score of grab for player fail to 0$' ; then
+					elif ! echo "$fail" | grep -q '^Set score of grab for player fail to 0$' ; then
 						mc say "$ERR_MULTIPLE_GRAB_INPUTS" "$grab".
 					else
 						. "$TRIGGER/grab"
@@ -180,12 +179,12 @@ while [ "$running" = "1" ] ; do
 					. "$TRIGGER/scoreboard_value"
 				fi
 			elif echo "$result" | grep -q "^Teleported .* to .*$" ; then
-				player="$(echo "$result" | sed 's/^Teleported //;s/ to.*$//')"
-				destination="$(echo "$result" | sed 's/^.* to //')"
+				player="$(echo "$result" | sed 's/^Teleported \(.*\) to \(.*\)$/\1/')"
+				destination="$(echo "$result" | sed 's/^Teleported \(.*\) to \(.*\)$/\2/')"
 				if echo "$destination" | grep -q "^.*, .*, .*$" ; then
-					x="$(echo "$result" | sed 's/^.* to //;s/, .*, .*$//')"
-					y="$(echo "$result" | sed "s/^.* to $x, //;s/, .*$//")"
-					z="$(echo "$result" | sed 's/^.*, //')"
+					x="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\1/')"
+					y="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\2/')"
+					z="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\3/')"
 					. "$TRIGGER/teleport"
 				else
 					. "$TRIGGER/teleport_entity"
@@ -196,34 +195,34 @@ while [ "$running" = "1" ] ; do
 				. "$TRIGGER/world_save"
 			fi
 		elif echo "$line_trimmed" | grep -q '^\[.*\] .*$' ; then
-			message="$(echo "$line_trimmed" | sed 's/^\[[^]]*\] \(.*\)$/\1/')"
+			message="$(echo "$line_trimmed" | sed 's/^\[[^]]*\] //')"
 			. "$TRIGGER/say_command"
 		fi
-	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: Failed to execute '.*' as .*$" ; then
-		command="$(echo "$line" | sed "s/^[^']*'//;s/' as .*$//")"
-		executor="$(echo "$line" | sed "s/^.*' as //")"
+	elif echo "$line_trimmed" | grep -q "^Failed to execute '.*' as .*$" ; then
+		command="$(echo "$line_trimmed" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\1/")"
+		executor="$(echo "$line_trimmed" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\2/")"
 		. "$TRIGGER/execute_failure"
-	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: The data tag did not change: .*$" ; then
-		nbtdata="$(echo "$line" | sed 's/^\[..:..:..\] \[Server thread\/INFO\]: The data tag did not change: //')"
+	elif echo "$line_trimmed" | grep -q "^The data tag did not change: .*$" ; then
+		nbtdata="$(echo "$line_trimmed" | sed 's/^The data tag did not change: //')"
 		mc "$("$TRIGGER/read_nbt.py" "$nbtdata")"
-	elif echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: <.*> .*$' ; then
-		player="$(echo "$line" | sed 's/^.*<//;s/>.*$//')"
-		message="$(echo "$line" | sed 's/^[^>]*> //')"
+	elif echo "$line_trimmed" | grep -q '^<.*> .*$' ; then
+		player="$(echo "$line_trimmed" | sed 's/^<\([^>]*\)> \(.*\)$/\1/')"
+		message="$(echo "$line_trimmed" | sed 's/^<\([^>]*\)> \(.*\)$/\2/')"
 		if echo "$message" | grep -q "^$PREFIX.*$" ; then
-			message="$(echo "$message" | sed "s/^"$PREFIX"\(.*\)/\1/")" # todo: maybe use $command or something. Also variable expansion and quoting...make sure this is safe https://google.github.io/styleguide/shell.xml?showone=Variable_expansion#Variable_expansion
+			message="$(echo "$message" | sed "s/^"$PREFIX"\(.*\)$/\1/")" # todo: maybe use $command or something. Also variable expansion and quoting...make sure this is safe https://google.github.io/styleguide/shell.xml?showone=Variable_expansion#Variable_expansion
 			. "$TRIGGER/global_message_prefix" $message
 		else
 			. "$TRIGGER/global_message"
 		fi
-	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: Stopping server$" ; then
+	elif echo "$line_trimmed" | grep -q "^Stopping server$" ; then
 		running="0"
 	# do not put an else here unless you explicitly want to run a command on every line the server outputs
 	fi
 # </the magic>
 	temp="$fail" # this section is some stuff for grabs that has to be done at the end of the loop
 	fail="$last" # specifically, grabs ignore failed execute commands and only care about the errors
-	last="$line" # as said errors can be generic, be careful about what you feed a grab
-	if echo "$last" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: Failed to execute '.*' as .*$" ; then
+	last="$line_trimmed" # as said errors can be generic, be careful about what you feed a grab
+	if echo "$last" | grep -q "^Failed to execute '.*' as .*$" ; then
 		last="$fail"
 		fail="$temp"
 	fi

@@ -5,12 +5,12 @@
 
 if [ "$grab" = "blend" ] ; then
 	player="$grabber"
-	if echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: .* has .* that match the criteria$' ; then
+	if echo "$last" | grep -q '^.* has .* that match the criteria$' ; then
 		mc scoreboard players set "$player" blend 1
 		mc execute "$player" "~ ~ ~" scoreboard players set @e[type=Item,c=1,r=3] blend 2
-	elif echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Could not clear the inventory of .*, no items to remove$' ; then
+	elif echo "$last" | grep -q '^Could not clear the inventory of .*, no items to remove$' ; then
 		mc tellraw "$player" [\"["$ARMORSTAND"] Blending costs 1 book\"]
-	elif echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: The data tag did not change: {.*}$' ; then
+	elif echo "$last" | grep -q '^The data tag did not change: {.*}$' ; then
 		set_score_zero="blend"
 		if echo "$last" | grep -q '^.*{ench:.*}$' ; then
 			#repair_cost="$(echo \"$last\" | sed 's///')"
@@ -26,7 +26,7 @@ if [ "$grab" = "blend" ] ; then
 		mc say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab".
 	fi
 #elif [ "$grab" = "trig" ] ; then
-#	if echo "$last" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: The data tag did not change: .*$' ; then
+#	if echo "$last" | grep -q '^The data tag did not change: .*$' ; then
 #		mc say beep
 #	else
 #		mc say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab".
