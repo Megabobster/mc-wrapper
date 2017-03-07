@@ -157,11 +157,12 @@ while [ "$running" = "1" ] ; do
 # <the magic>
 	read line
 	echo "$line"
-	if echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: \[.*\].*$" ; then
+	line_trimmed="$(echo "$line" | sed 's/^\(\[..:..:..]\) \(\[Server thread\/INFO]:\) \(.*\)$/\3/')"
+	if echo "$line_trimmed" | grep -q "^\[.*\].*$" ; then
+		executor="$(echo "$line_trimmed" | sed 's/^\[\([^]:]*\)[]:] \(.*\)$/\1/')"
 		# todo: simplify variables here
-		if echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: \[.*: .*\]" ; then
-			executor="$(echo "$line" | sed 's/^.*\]: \[//;s/: .*$//')"
-			result="$(echo "$line" | sed 's/^.*: //;s/\]$//')"
+		if echo "$line_trimmed" | grep -q "^\[.*: .*\]$" ; then
+			result="$(echo "$line_trimmed" | sed 's/^\[[^:]*: \(.*\)\]$/\1/')"
 			if echo "$result" | grep -q "^Set score of .* for player .* to .*$" ; then
 				objective="$(echo "$line" | sed 's/^.*score of //;s/ for player.*$//')"
 				player="$(echo "$line" | sed 's/^.*for player //;s/ to .*$//')"
@@ -194,10 +195,8 @@ while [ "$running" = "1" ] ; do
 			elif echo "$result" | grep -q "^Saved the world$" ; then
 				. "$TRIGGER/world_save"
 			fi
-		elif echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: \[.*\] .*$' ; then
-			trim="$(echo "$line" | sed 's/^\[..:..:..\] \[Server thread\/INFO\]: \[//')" # todo: make this regex not suck
-			player="$(echo "$trim" | sed 's/\].*//')" # I think this can match with square brackets in the player's message
-			message="$(echo "$trim" | sed 's/.*[^\]]*] //')"
+		elif echo "$line_trimmed" | grep -q '^\[.*\] .*$' ; then
+			message="$(echo "$line_trimmed" | sed 's/^\[[^]]*\] \(.*\)$/\1/')"
 			. "$TRIGGER/say_command"
 		fi
 	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: Failed to execute '.*' as .*$" ; then
@@ -206,14 +205,12 @@ while [ "$running" = "1" ] ; do
 		. "$TRIGGER/execute_failure"
 	elif echo "$line" | grep -q "^\[..:..:..\] \[Server thread/INFO\]: The data tag did not change: .*$" ; then
 		nbtdata="$(echo "$line" | sed 's/^\[..:..:..\] \[Server thread\/INFO\]: The data tag did not change: //')"
-		#. "$TRIGGER/read_nbt"
 		mc "$("$TRIGGER/read_nbt.py" "$nbtdata")"
 	elif echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: <.*> .*$' ; then
 		player="$(echo "$line" | sed 's/^.*<//;s/>.*$//')"
 		message="$(echo "$line" | sed 's/^[^>]*> //')"
 		if echo "$message" | grep -q "^$PREFIX.*$" ; then
-			message="$(echo "$line" | sed "s/^[^>]*> $PREFIX//")" # todo: make this based on $message instead of $line, also maybe use $command or something
-#			message="$(echo "$message" | sed "s/^[^"$PREFIX"]*"$PREFIX"//")" # variable expansion and quoting...brace quotes might fix this https://google.github.io/styleguide/shell.xml?showone=Variable_expansion#Variable_expansion
+			message="$(echo "$message" | sed "s/^"$PREFIX"\(.*\)/\1/")" # todo: maybe use $command or something. Also variable expansion and quoting...make sure this is safe https://google.github.io/styleguide/shell.xml?showone=Variable_expansion#Variable_expansion
 			. "$TRIGGER/global_message_prefix" $message
 		else
 			. "$TRIGGER/global_message"

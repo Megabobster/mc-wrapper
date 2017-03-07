@@ -2,13 +2,13 @@
 
 # triggers when the /say command is run
 # variables available are as follows:
-# ["$player"] "$message"
+# ["$executor"] "$message"
 
-#if [ "$player" = "Server" -a "$message" = "Server backing up." ] ; then # todo: make this a separate function that other things can call
+#if [ "$executor" = "Server" -a "$message" = "Server backing up." ] ; then # todo: make this a separate function that other things can call
 if [ "$message" = "Server backing up." ] ; then
 	mc_ignore_armorstand say This will disable all wrapper-enhanced functionality until the backup is complete.
 	mc save-off
 	mc save-all flush
-#elif [ "$message" = "test" ] ; then
-#	mc entitydata @e[type=pig] {CustomName:"test"}
+elif [ "$message" = "test" ] ; then
+	mc execute @a \~ \~ \~ summon Pig
 fi
