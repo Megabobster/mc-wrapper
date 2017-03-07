@@ -23,14 +23,6 @@
 #		else
 #			mc tellraw "$player" [\"["$ARMORSTAND"] Usage: !bork <1-4>\"] # todo: what the hell is going on with this tellraw. < and > stuff, as well as quote/JSON stuff, I think?
 		fi
-	elif [ "$1" = "k" ] ; then
-		if [ "$2" -le "16" ] ; then
-			for i in $(seq 1 "$2") ; do
-				mc say k
-			done
-		else
-			mc say no
-		fi
 	elif [ "$1" = "run" ] ; then
 		if [ "$2" ] ; then
 			if [ "$2" -le "16" ] ; then

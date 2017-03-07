@@ -8,5 +8,3 @@ nbtdata = sys.argv[1]
 # The data tag did not change: "$nbtdata"
 
 print "say " + str(nbtdata)
-print "say test"
-print "say " + str(nbtdata)

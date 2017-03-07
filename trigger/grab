@@ -25,16 +25,14 @@ if [ "$grab" = "blend" ] ; then
 	else # make sure to put this else at the end of each grab
 		mc say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab".
 	fi
-#elif [ "$grab" = "trig" ] ; then
-#	if echo "$last" | grep -q '^The data tag did not change: .*$' ; then
-#		mc say beep
-#	else
-#		mc say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab".
-#	fi
 elif [ "$grab" = "smash" ] ; then
 	player="$grabber"
-	set_score_zero="smash"
-	mc say boop
+	if echo "$last" | grep -q '^The data tag did not change: .*$' ; then
+		set_score_zero="smash"
+		mc say "test"
+	else
+		mc say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab"
+	fi
 else # make sure to leave this here
 	mc say "$ERR_INVALID_GRAB" "$grab".
 fi

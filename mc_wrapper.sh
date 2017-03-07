@@ -36,8 +36,8 @@
 # just make sure to escape or quote special characters if necessary
 
 function mc() {
-	echo "$*" | while read test ; do # $* necessary to preserve spaces. todo: better var name than test
-		echo "execute @r[type=armor_stand,name=$ARMORSTAND,tag=$ARMORSTAND] ~ ~ ~ $test" > "$MC_INPUT"
+	echo "$*" | while read mc_line ; do # $* necessary to preserve spaces
+		echo "execute @r[type=armor_stand,name=$ARMORSTAND,tag=$ARMORSTAND] ~ ~ ~ $mc_line" > "$MC_INPUT"
 	done
 }
 
@@ -46,8 +46,8 @@ function mc() {
 # mc is fancier, mc_ignore_armorstand will always work
 
 function mc_ignore_armorstand() {
-	echo "$*" | while read test ; do
-		echo "$test" > "$MC_INPUT"
+	echo "$*" | while read mc_line ; do
+		echo "$mc_line" > "$MC_INPUT"
 	done
 }
 
@@ -158,15 +158,18 @@ while [ "$running" = "1" ] ; do
 	read line
 	echo "$line"
 	line_trimmed="$(echo "$line" | sed 's/^\(\[..:..:..]\) \(\[Server thread\/INFO]:\) \(.*\)$/\3/')"
+	# Execute style input
 	if echo "$line_trimmed" | grep -q "^\[.*\].*$" ; then
-		executor="$(echo "$line_trimmed" | sed 's/^\[\([^]:]*\)[]:] .*$/\1/')"
+		executer="$(echo "$line_trimmed" | sed 's/^\[\([^]:]*\)[]:] .*$/\1/')"
+		# Executed commands
 		if echo "$line_trimmed" | grep -q "^\[.*: .*\]$" ; then
 			result="$(echo "$line_trimmed" | sed 's/^\[[^:]*: \(.*\)\]$/\1/')"
+			# Scoreboard updates
 			if echo "$result" | grep -q "^Set score of .* for player .* to .*$" ; then
 				objective="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\1/')"
 				player="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\2/')"
 				score="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\3/')"
-				if [ "$executor" = "$ARMORSTAND" -a "$objective" = "grab" -a "$score" = "1" ] ; then
+				if [ "$executer" = "$ARMORSTAND" -a "$objective" = "grab" -a "$score" = "1" ] ; then
 					grab="$player"
 					if echo "$last" | grep -q '^Set score of grab for player fail to 0$' ; then
 						mc say "$ERR_GRAB_INPUT_NOT_RECEIVED" "$grab".
@@ -178,6 +181,7 @@ while [ "$running" = "1" ] ; do
 				else
 					. "$TRIGGER/scoreboard_value"
 				fi
+			# Teleports
 			elif echo "$result" | grep -q "^Teleported .* to .*$" ; then
 				player="$(echo "$result" | sed 's/^Teleported \(.*\) to \(.*\)$/\1/')"
 				destination="$(echo "$result" | sed 's/^Teleported \(.*\) to \(.*\)$/\2/')"
@@ -189,22 +193,29 @@ while [ "$running" = "1" ] ; do
 				else
 					. "$TRIGGER/teleport_entity"
 				fi
+			# Entitydata updates
 			elif echo "$result" | grep -q "^Entity data updated to: .*$" ; then
-				pass # todo: this
+				nbtdata="$(echo "$line_trimmed" | sed 's/^Entity data updated to: //')"
+				. "$TRIGGER/write_nbt"
+			# Saved the world
 			elif echo "$result" | grep -q "^Saved the world$" ; then
 				. "$TRIGGER/world_save"
 			fi
+		# /say messages
 		elif echo "$line_trimmed" | grep -q '^\[.*\] .*$' ; then
 			message="$(echo "$line_trimmed" | sed 's/^\[[^]]*\] //')"
 			. "$TRIGGER/say_command"
 		fi
+	# Execute command failure
 	elif echo "$line_trimmed" | grep -q "^Failed to execute '.*' as .*$" ; then
 		command="$(echo "$line_trimmed" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\1/")"
-		executor="$(echo "$line_trimmed" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\2/")"
+		executer="$(echo "$line_trimmed" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\2/")"
 		. "$TRIGGER/execute_failure"
+	# NBT data dump
 	elif echo "$line_trimmed" | grep -q "^The data tag did not change: .*$" ; then
 		nbtdata="$(echo "$line_trimmed" | sed 's/^The data tag did not change: //')"
 		mc "$("$TRIGGER/read_nbt.py" "$nbtdata")"
+	# Player message in chat
 	elif echo "$line_trimmed" | grep -q '^<.*> .*$' ; then
 		player="$(echo "$line_trimmed" | sed 's/^<\([^>]*\)> \(.*\)$/\1/')"
 		message="$(echo "$line_trimmed" | sed 's/^<\([^>]*\)> \(.*\)$/\2/')"
@@ -214,6 +225,7 @@ while [ "$running" = "1" ] ; do
 		else
 			. "$TRIGGER/global_message"
 		fi
+	# Server stopping
 	elif echo "$line_trimmed" | grep -q "^Stopping server$" ; then
 		running="0"
 	# do not put an else here unless you explicitly want to run a command on every line the server outputs

@@ -2,7 +2,7 @@
 
 # triggers when an entity is teleported to another entity
 # variables are as follows
-# ["$executor": Teleported "$player" to "$destination"]
+# ["$executer": Teleported "$player" to "$destination"]
 
 if [ "$player" = "tp" -a "$destination" = "Megabobster" ]; then
 	mc entitydata @e[name=tp,tag=-,type=armor_stand] {}
