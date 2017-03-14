@@ -213,7 +213,7 @@ while [ "$running" = "1" ] ; do
 		. "$TRIGGER/execute_failure"
 	# NBT data dump
 	elif echo "$line_trimmed" | grep -q "^The data tag did not change: .*$" ; then
-		nbtdata="$(echo "$line_trimmed" | sed 's/^The data tag did not change: //' | sed 's/\([[,]\)[0-9]\+[:]/\1/g' | sed 's/\([[{:,]\)\([a-zA-Z0-9.-]\+\)/\1"\2"/g')"
+		nbtdata="$(echo "$line_trimmed" | sed 's/^The data tag did not change: //;s/\([[,]\)[0-9]\+[:]/\1/g;s/\([[{:,]\)\([a-zA-Z0-9.-]\+\)/\1"\2"/g')"
 		mc "$("$TRIGGER/read_nbt.py" "$nbtdata")"
 	# Player message in chat
 	elif echo "$line_trimmed" | grep -q '^<.*> .*$' ; then
