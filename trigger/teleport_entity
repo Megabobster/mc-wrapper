@@ -4,6 +4,6 @@
 # variables are as follows
 # ["$executer": Teleported "$player" to "$destination"]
 
-if [ "$player" = "tp" -a "$destination" = "Megabobster" ]; then
-	mc entitydata @e[name=tp,tag=-,type=armor_stand] {}
+if [ "$player" = "xyz" -a "$destination" = "Megabobster" ]; then
+	mc entitydata @e[name=xyz,tag=-,type=armor_stand] {}
 fi
