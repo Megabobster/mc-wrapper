@@ -29,7 +29,7 @@ elif [ "$grab" = "smash" ] ; then
 	player="$grabber"
 	if echo "$last" | grep -q '^The data tag did not change: .*$' ; then
 		set_score_zero="smash"
-		mc say "test"
+		mc blockdata -11 4 -9
 	else
 		mc say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab"
 	fi
