@@ -12,4 +12,4 @@ Using said information, I've set up a series of trigger conditions. Putting cond
 
 # License
 
-Feel free to use this program and modify it to fit your needs, as long as your needs aren't commercial or nefarious. If you make modifications, make them publicly available.
+Feel free to use this program, write software to be used by it, and modify it to fit your needs, as long as your needs aren't commercial or nefarious (in plainer English: contact me if your use case isn't personal). If you make modifications, make them publicly available.
