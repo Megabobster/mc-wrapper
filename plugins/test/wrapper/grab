@@ -7,7 +7,7 @@ if [ "$grab" = "blend" ] ; then
 	player="$grabber"
 	if echo "$last" | grep -q '^.* has .* that match the criteria$' ; then
 		mc scoreboard players set "$player" blend 1
-		mc execute "$player" "~ ~ ~" scoreboard players set @e[type=Item,c=1,r=3] blend 2
+		mc execute "$player" '~ ~ ~' scoreboard players set @e[type=Item,c=1,r=3] blend 2
 	elif echo "$last" | grep -q '^Could not clear the inventory of .*, no items to remove$' ; then
 		mc tellraw "$player" [\"["$ARMORSTAND"] Blending costs 1 book\"]
 	elif echo "$last" | grep -q '^The data tag did not change: {.*}$' ; then

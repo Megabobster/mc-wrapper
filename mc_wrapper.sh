@@ -30,7 +30,7 @@
 # function mc runs arbitrary minecraft commands
 # usage: mc <arbitrary minecraft command>
 # like so: mc setblock 1 2 3 air
-# or like so: mc execute @r "~ ~ ~" tp @p "~ ~1 ~"
+# or like so: mc execute @r '~ ~ ~' tp @p '~ ~1 ~'
 # feel free to get fancy/use variables/insert $(echo $line | sed s///)
 # entity selectors are allowed as well!
 # just make sure to escape or quote special characters if necessary
@@ -50,6 +50,8 @@ function mc_ignore_armorstand() {
 		echo "$mc_line" > "$MC_INPUT"
 	done
 }
+
+# todo: good programming might make grab go away
 
 # function grab runs arbitrary minecraft command and gets arbitrary output
 # usage: grab <$grab> <arbitrary minecraft command>
@@ -72,6 +74,10 @@ function grab() {
 	mc scoreboard players set fail grab 0
 	mc "${@:2}"
 	mc scoreboard players set "$1" grab 1
+}
+
+function trigger() {
+	mc "$("$PLUGINS/$1" "${@:2}")" # maybe *
 }
 
 # while you're here
@@ -138,7 +144,7 @@ while [ "$running" = "1" ] ; do
 		done
 	elif echo "$line" | grep "^\[..:..:..\] \[Server thread/INFO\]: \[Server\] $WRAPPER_INIT_START$" ; then
 		mc_ignore_armorstand kill @e[type=armor_stand,name="$ARMORSTAND",tag="$ARMORSTAND"]
-		mc_ignore_armorstand summon armor_stand 0 0 0 "{CustomName:\"$ARMORSTAND\",Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:\"$ARMORSTAND\"]}"
+		mc_ignore_armorstand summon armor_stand 0 0 0 '{CustomName:'"$ARMORSTAND"',Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:'"$ARMORSTAND"']}'
 # todo: constant for worldspawn instead of 0 0 0
 # mc_ignore_armorstand isn't necessary after this point, it just creates less errors if commands fail (like if the scoreboard already exists)
 		mc_ignore_armorstand scoreboard objectives add grab dummy
@@ -157,90 +163,96 @@ while [ "$running" = "1" ] ; do
 # <the magic>
 	read line
 	echo "$line"
-	line_trimmed="$(echo "$line" | sed 's/^\(\[..:..:..]\) \(\[Server thread\/INFO]:\) \(.*\)$/\3/')"
-	# Execute style input
-	if echo "$line_trimmed" | grep -q "^\[.*\].*$" ; then
-		executer="$(echo "$line_trimmed" | sed 's/^\[\([^]:]*\)[]:] .*$/\1/')"
-		# Executed commands
-		if echo "$line_trimmed" | grep -q "^\[.*: .*\]$" ; then
-			result="$(echo "$line_trimmed" | sed 's/^\[[^:]*: \(.*\)\]$/\1/')"
-			# Scoreboard updates
-			if echo "$result" | grep -q "^Set score of .* for player .* to .*$" ; then
-				objective="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\1/')"
-				player="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\2/')"
-				score="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\3/')"
-				if [ "$executer" = "$ARMORSTAND" -a "$objective" = "grab" -a "$score" = "1" ] ; then
-					grab="$player"
-					if echo "$last" | grep -q '^Set score of grab for player fail to 0$' ; then
-						mc say "$ERR_GRAB_INPUT_NOT_RECEIVED" "$grab".
-					elif ! echo "$fail" | grep -q '^Set score of grab for player fail to 0$' ; then
-						mc say "$ERR_MULTIPLE_GRAB_INPUTS" "$grab".
-					else
-						. "$PLUGINS/wrapper/grab"
-					fi
-				else
-					. "$PLUGINS/minecraft/command/success/scoreboard_score_set"
-				fi
-			# Teleports
-			elif echo "$result" | grep -q "^Teleported .* to .*$" ; then
-				player="$(echo "$result" | sed 's/^Teleported \(.*\) to \(.*\)$/\1/')"
-				destination="$(echo "$result" | sed 's/^Teleported \(.*\) to \(.*\)$/\2/')"
-				if echo "$destination" | grep -q "^.*, .*, .*$" ; then
-					x="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\1/')"
-					y="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\2/')"
-					z="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\3/')"
-					. "$PLUGINS/minecraft/command/success/teleport_coodinates"
-				else
-					. "$PLUGINS/minecraft/command/success/teleport_entity"
-				fi
-			# Entitydata updates
-			elif echo "$result" | grep -q "^Entity data updated to: .*$" ; then
-				nbtdata="$(echo "$line_trimmed" | sed 's/^Entity data updated to: //')"
-				. "$PLUGINS/minecraft/command/success/entitydata"
-			# Saved the world
-			elif echo "$result" | grep -q "^Saved the world$" ; then
-				. "$PLUGINS/minecraft/command/success/save-all"
-			fi
-		# /say messages
-		elif echo "$line_trimmed" | grep -q '^\[.*\] .*$' ; then
-			message="$(echo "$line_trimmed" | sed 's/^\[[^]]*\] //')"
-			. "$PLUGINS/minecraft/command/success/say"
-		fi
-	# Execute command failure
-	elif echo "$line_trimmed" | grep -q "^Failed to execute '.*' as .*$" ; then
-		command="$(echo "$line_trimmed" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\1/")"
-		executer="$(echo "$line_trimmed" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\2/")"
-		. "$PLUGINS/minecraft/command/failure/execute"
-	# NBT data dump
-	elif echo "$line_trimmed" | grep -q "^The data tag did not change: .*$" ; then
-		nbtdata="$(echo "$line_trimmed" | ./parse_nbt.sed)"
-		mc "$("$PLUGINS/minecraft/command/failure/entitydata_blockdata.py" "$nbtdata")"
-	# Player message in chat
-	elif echo "$line_trimmed" | grep -q '^<.*> .*$' ; then
-		player="$(echo "$line_trimmed" | sed 's/^<\([^>]*\)> \(.*\)$/\1/')"
-		message="$(echo "$line_trimmed" | sed 's/^<\([^>]*\)> \(.*\)$/\2/')"
-		if echo "$message" | grep -q "^$PREFIX.*$" ; then
-			message="$(echo "$message" | sed "s/^"$PREFIX"\(.*\)$/\1/")" # todo: maybe use $command or something. Also variable expansion and quoting...make sure this is safe https://google.github.io/styleguide/shell.xml?showone=Variable_expansion#Variable_expansion
-			. "$PLUGINS/wrapper/global_message_prefix" $message
-		else
-			. "$PLUGINS/minecraft/global_message"
-		fi
-	# Server stopping
-	elif echo "$line_trimmed" | grep -q "^Stopping server$" ; then
+	status="$(echo "$line" | sed 's/^\(\[..:..:..]\) \[\([^]]*\)]: \(.*\)$/\2/')"
+	line_trimmed="$(echo "$line" | sed 's/^\(\[..:..:..]\) \[\([^]]*\)]: \(.*\)$/\3/')"
+	if [ "$status" = "test" ] ; then
 		running="0"
-	# do not put an else here unless you explicitly want to run a command on every line the server outputs
-	fi
-# </the magic>
-	temp="$fail" # this section is some stuff for grabs that has to be done at the end of the loop
-	fail="$last" # specifically, grabs ignore failed execute commands and only care about the errors
-	last="$line_trimmed" # as said errors can be generic, be careful about what you feed a grab
-	if echo "$last" | grep -q "^Failed to execute '.*' as .*$" ; then
-		last="$fail"
-		fail="$temp"
-	fi
-	if [ -n "$set_score_zero" ] ; then
-		mc scoreboard players set "$player" "$set_score_zero" 0
-		set_score_zero=
+	elif [ "$status" = "Server thread/INFO" ] ; then
+		# Execute style input
+		if echo "$line_trimmed" | grep -q "^\[.*\].*$" ; then
+			executer="$(echo "$line_trimmed" | sed 's/^\[\([^]:]*\)[]:] .*$/\1/')"
+			# Executed commands
+			if echo "$line_trimmed" | grep -q "^\[.*: .*\]$" ; then
+				result="$(echo "$line_trimmed" | sed 's/^\[[^:]*: \(.*\)\]$/\1/')"
+				# Scoreboard updates
+				if echo "$result" | grep -q "^Set score of .* for player .* to .*$" ; then
+					objective="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\1/')"
+					player="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\2/')"
+					score="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\3/')"
+					if [ "$executer" = "$ARMORSTAND" -a "$objective" = "grab" -a "$score" = "1" ] ; then
+						grab="$player"
+						if echo "$last" | grep -q '^Set score of grab for player fail to 0$' ; then
+							mc say "$ERR_GRAB_INPUT_NOT_RECEIVED" "$grab".
+						elif ! echo "$fail" | grep -q '^Set score of grab for player fail to 0$' ; then
+							mc say "$ERR_MULTIPLE_GRAB_INPUTS" "$grab".
+						else
+							. "$PLUGINS/wrapper/grab"
+						fi
+					else
+						. "$PLUGINS/minecraft/command/success/scoreboard_score_set"
+					fi
+				# Teleports
+				elif echo "$result" | grep -q "^Teleported .* to .*$" ; then
+					player="$(echo "$result" | sed 's/^Teleported \(.*\) to \(.*\)$/\1/')"
+					destination="$(echo "$result" | sed 's/^Teleported \(.*\) to \(.*\)$/\2/')"
+					if echo "$destination" | grep -q "^.*, .*, .*$" ; then
+						x="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\1/')"
+						y="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\2/')"
+						z="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\3/')"
+						. "$PLUGINS/minecraft/command/success/teleport_coodinates"
+					else
+						. "$PLUGINS/minecraft/command/success/teleport_entity"
+					fi
+				# Entitydata updates
+				elif echo "$result" | grep -q "^Entity data updated to: .*$" ; then
+					nbtdata="$(echo "$line_trimmed" | sed 's/^Entity data updated to: //')"
+					. "$PLUGINS/minecraft/command/success/entitydata"
+				# Saved the world
+				elif echo "$result" | grep -q "^Saved the world$" ; then
+					. "$PLUGINS/minecraft/command/success/save-all"
+				fi
+			# /say messages
+			elif echo "$line_trimmed" | grep -q '^\[.*\] .*$' ; then
+				message="$(echo "$line_trimmed" | sed 's/^\[[^]]*\] //')"
+				. "$PLUGINS/minecraft/command/success/say"
+			fi
+		# Execute command failure
+		elif echo "$line_trimmed" | grep -q "^Failed to execute '.*' as .*$" ; then
+			command="$(echo "$line_trimmed" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\1/")"
+			executer="$(echo "$line_trimmed" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\2/")"
+			. "$PLUGINS/minecraft/command/failure/execute"
+		# NBT data dump
+		elif echo "$line_trimmed" | grep -q "^The data tag did not change: .*$" ; then
+			nbtdata="$(echo "$line_trimmed" | ./parse_nbt.sed)"
+			#mc "$("$PLUGINS/minecraft/command/failure/entitydata_blockdata.py" "$nbtdata")"
+			trigger minecraft/command/failure/entitydata_blockdata.py "$nbtdata"
+		# Player message in chat
+		elif echo "$line_trimmed" | grep -q '^<.*> .*$' ; then
+			player="$(echo "$line_trimmed" | sed 's/^<\([^>]*\)> \(.*\)$/\1/')"
+			message="$(echo "$line_trimmed" | sed 's/^<\([^>]*\)> \(.*\)$/\2/')"
+			if echo "$message" | grep -q "^$PREFIX.*$" ; then
+				command=($(echo "$message" | sed "s/^"$PREFIX"\(.*\)$/\1/"))
+				. "$PLUGINS/wrapper/global_message_prefix" "$player" "$command"
+			else
+				. "$PLUGINS/minecraft/global_message"
+			fi
+		# Server stopping
+		elif echo "$line_trimmed" | grep -q "^Stopping server$" ; then
+			running="0"
+		# do not put an else here unless you explicitly want to run a command on every line the server outputs
+		fi
+	# </the magic>
+		temp="$fail" # this section is some stuff for grabs that has to be done at the end of the loop
+		fail="$last" # specifically, grabs ignore failed execute commands and only care about the errors
+		last="$line_trimmed" # as said errors can be generic, be careful about what you feed a grab
+		if echo "$last" | grep -q "^Failed to execute '.*' as .*$" ; then
+			last="$fail"
+			fail="$temp"
+		fi
+		if [ -n "$set_score_zero" ] ; then
+			mc scoreboard players set "$player" "$set_score_zero" 0
+			set_score_zero=
+		fi
 	fi
 done < "$MC_OUTPUT"
 # shutdown commands could theoretically be put here but be very careful as they

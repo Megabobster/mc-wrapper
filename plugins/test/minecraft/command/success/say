@@ -10,5 +10,5 @@ if [ "$message" = "Server backing up." ] ; then
 	mc save-off
 	mc save-all flush
 elif [ "$message" = "test" ] ; then
-	mc execute "@r[c=1]" "~ ~ ~" summon Pig
+	mc execute "@r[c=1]" '~ ~ ~' summon Pig
 fi

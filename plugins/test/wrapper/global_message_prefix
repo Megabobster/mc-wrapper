@@ -1,47 +1,54 @@
 #!/bin/bash
 
-# triggers when a message starting with $PREFIX is said in global chat
-# passes $message as arguments so prefix commands can have arbitrary arguments
-# variables available are as follows:
-# <"$player"> $PREFIX"$message"
+# maybe: source config
+player="$1"
+command="$2"
 
-# trigger_global_message_prefix() {
-	if [ "$player" = "Megabobster" -a "$1" = "halt" ] ; then
-		running="0"
-	elif [ "$1" = "blend" ] ; then
-		grabber="$player"
-		grab blend clear @a[name="$player",score_blend=0] minecraft:book -1 0
-	elif [ "$1" = "bork" ] ; then
-		if [ "$2" = "1" ] ; then
-			grab bork tp @a[score_bork=0] "~ ~ ~"		# ERR_GRAB_INPUT_NOT_RECEIVED
-		elif [ "$2" = "2" ] ; then
-			grab bork execute @a "~ ~ ~" entitydata @e {}	# ERR_MULTIPLE_GRAB_INPUTS
-		elif [ "$2" = "3" ] ; then
-			grab blend say bork				# ERR_UNEXPECTED_GRAB_INPUT
-		elif [ "$2" = "4" ] ; then
-			grab bork tell "$player" bork			# ERR_INVALID_GRAB
-#		else
-#			mc tellraw "$player" [\"["$ARMORSTAND"] Usage: !bork <1-4>\"] # todo: what the hell is going on with this tellraw. < and > stuff, as well as quote/JSON stuff, I think?
-		fi
-	elif [ "$1" = "run" ] ; then
-		if [ "$2" ] ; then
-			if [ "$2" -le "16" ] ; then
-				for i in $(seq 1 "$2") ; do
-					mc execute "$player" "~ ~ ~" "${@:3}"
-				done
-			else
-				mc say Run cannot exceed 16 loops.
-			fi
-		else
-			mc say No arguments provided.
-#			mc tellraw "$player" [\"["$ARMORSTAND"] Usage: !run <1-16> <command>\"] # todo: seriously what's going on here
-		fi
-	elif [ "$1" = "level-name" ] ; then
-		mc say "$LEVEL_NAME"
-#	elif [ "$1" = "xyz" ] ; then # todo: trigger like grab, not grab...
-#		mc execute "$player" "~ ~ ~" summon ArmorStand "~ ~ ~" "{CustomName:\"xyz\",Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:\"xyz\"]}"
-#		grab xyz tp @e[name=xyz,tag=xyz,c=1] "~ ~ ~"
-	else
-		mc say "$ERR_INVALID_MESSAGE_COMMAND" "$1".
-	fi
+#function grab() {
+#	echo scoreboard players set fail grab 0
+#	echo "${@:2}"
+#	echo scoreboard players set "$1" grab 1
 #}
+
+# triggers when a message starting with $PREFIX is said in global chat
+# passes $command as an array so prefix commands can have arbitrary arguments
+# variables available are as follows:
+# <"$player"> $PREFIX"$command"
+
+if [ "$player" = "Megabobster" -a "${command[0]}" = "halt" ] ; then
+	echo "["$(date +%H:%M:%S)"] [test]: halt" > mc_output
+elif [ "${command[0]}" = "blend" ] ; then
+	grabber="$player"
+	grab blend clear @a[name="$player",score_blend=0] minecraft:book -1 0
+elif [ "${command[0]}" = "bork" ] ; then # test cases for grab error handling
+	if [ "${command[1]}" = "1" ] ; then
+		grab bork tellraw @a '["bork"]'		# ERR_GRAB_INPUT_NOT_RECEIVED
+	elif [ "${command[1]}" = "2" ] ; then
+		grab bork help				# ERR_MULTIPLE_GRAB_INPUTS
+	elif [ "${command[1]}" = "3" ] ; then
+		grab blend say bork			# ERR_UNEXPECTED_GRAB_INPUT
+	elif [ "${command[1]}" = "4" ] ; then
+		grab bork say bork			# ERR_INVALID_GRAB
+	else
+		mc tellraw "$player" '[{"text":"['"$ARMORSTAND"'] Usage: !bork <1-4>"}]'
+	fi
+elif [ "${command[0]}" = "run" ] ; then
+	if [ "${command[1]}" -le "16" ] ; then
+		if [ "${command[2]}" ] ; then
+			for i in $(seq 1 "${command[1]}") ; do
+				mc execute "$player" '~ ~ ~' "${command[@]:2}"
+			done
+		else
+			mc tellraw "$player" '[{"text":"['"$ARMORSTAND"'] Usage: !run <1-16> <command>"}]'
+		fi
+	else
+		mc tellraw "$player" '[{"text":"['"$ARMORSTAND"'] Usage: !run <1-16> <command>"}]'
+	fi
+elif [ "${command[0]}" = "level-name" ] ; then
+	mc say "$LEVEL_NAME"
+#elif [ "${command[0]}" = "xyz" ] ; then # todo: trigger like grab, not grab...
+#	mc execute "$player" '~ ~ ~' summon ArmorStand '~ ~ ~' '{CustomName:"xyz",Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:"xyz"]}'
+#	grab xyz tp @e[name=xyz,tag=xyz,c=1] '~ ~ ~'
+else
+	mc say "$ERR_INVALID_MESSAGE_COMMAND" "${command[0]}".
+fi
