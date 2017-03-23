@@ -103,8 +103,8 @@ LEVEL_NAME="$(grep level-name= $MINECRAFT_DIR/server.properties | sed 's/^level-
 if ! [ -e "$SCRIPT_NAME" ] ; then
 	echo "$ERR_SCRIPT_MISSING"
 	exit
-elif ! [ -d "$TRIGGER" ] ; then
-	echo "$ERR_TRIGGER_MISSING"
+elif ! [ -d "$PLUGINS" ] ; then
+	echo "$ERR_PLUGINS_MISSING"
 	exit
 elif [ -e "$WRAPPER_PIDFILE" ] ; then
 	echo "$ERR_WRAPPER_RUNNING" # maybe: double check pid to see if it's running
@@ -176,10 +176,10 @@ while [ "$running" = "1" ] ; do
 					elif ! echo "$fail" | grep -q '^Set score of grab for player fail to 0$' ; then
 						mc say "$ERR_MULTIPLE_GRAB_INPUTS" "$grab".
 					else
-						. "$TRIGGER/grab"
+						. "$PLUGINS/wrapper/grab"
 					fi
 				else
-					. "$TRIGGER/scoreboard_value"
+					. "$PLUGINS/minecraft/command/success/scoreboard_score_set"
 				fi
 			# Teleports
 			elif echo "$result" | grep -q "^Teleported .* to .*$" ; then
@@ -189,41 +189,41 @@ while [ "$running" = "1" ] ; do
 					x="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\1/')"
 					y="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\2/')"
 					z="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\3/')"
-					. "$TRIGGER/teleport"
+					. "$PLUGINS/minecraft/command/success/teleport_coodinates"
 				else
-					. "$TRIGGER/teleport_entity"
+					. "$PLUGINS/minecraft/command/success/teleport_entity"
 				fi
 			# Entitydata updates
 			elif echo "$result" | grep -q "^Entity data updated to: .*$" ; then
 				nbtdata="$(echo "$line_trimmed" | sed 's/^Entity data updated to: //')"
-				. "$TRIGGER/write_nbt"
+				. "$PLUGINS/minecraft/command/success/entitydata"
 			# Saved the world
 			elif echo "$result" | grep -q "^Saved the world$" ; then
-				. "$TRIGGER/world_save"
+				. "$PLUGINS/minecraft/command/success/save-all"
 			fi
 		# /say messages
 		elif echo "$line_trimmed" | grep -q '^\[.*\] .*$' ; then
 			message="$(echo "$line_trimmed" | sed 's/^\[[^]]*\] //')"
-			. "$TRIGGER/say_command"
+			. "$PLUGINS/minecraft/command/success/say"
 		fi
 	# Execute command failure
 	elif echo "$line_trimmed" | grep -q "^Failed to execute '.*' as .*$" ; then
 		command="$(echo "$line_trimmed" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\1/")"
 		executer="$(echo "$line_trimmed" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\2/")"
-		. "$TRIGGER/execute_failure"
+		. "$PLUGINS/minecraft/command/failure/execute"
 	# NBT data dump
 	elif echo "$line_trimmed" | grep -q "^The data tag did not change: .*$" ; then
 		nbtdata="$(echo "$line_trimmed" | ./parse_nbt.sed)"
-		mc "$("$TRIGGER/read_nbt.py" "$nbtdata")"
+		mc "$("$PLUGINS/minecraft/command/failure/entitydata_blockdata.py" "$nbtdata")"
 	# Player message in chat
 	elif echo "$line_trimmed" | grep -q '^<.*> .*$' ; then
 		player="$(echo "$line_trimmed" | sed 's/^<\([^>]*\)> \(.*\)$/\1/')"
 		message="$(echo "$line_trimmed" | sed 's/^<\([^>]*\)> \(.*\)$/\2/')"
 		if echo "$message" | grep -q "^$PREFIX.*$" ; then
 			message="$(echo "$message" | sed "s/^"$PREFIX"\(.*\)$/\1/")" # todo: maybe use $command or something. Also variable expansion and quoting...make sure this is safe https://google.github.io/styleguide/shell.xml?showone=Variable_expansion#Variable_expansion
-			. "$TRIGGER/global_message_prefix" $message
+			. "$PLUGINS/wrapper/global_message_prefix" $message
 		else
-			. "$TRIGGER/global_message"
+			. "$PLUGINS/minecraft/global_message"
 		fi
 	# Server stopping
 	elif echo "$line_trimmed" | grep -q "^Stopping server$" ; then
