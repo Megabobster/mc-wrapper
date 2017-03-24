@@ -36,8 +36,10 @@
 # just make sure to escape or quote special characters if necessary
 
 function mc() {
-	echo "$*" | while read mc_line ; do # $* necessary to preserve spaces
-		echo "execute @r[type=armor_stand,name=$ARMORSTAND,tag=$ARMORSTAND] ~ ~ ~ $mc_line" > "$MC_INPUT"
+	echo "$@" | while read mc_line ; do
+		if [ "$mc_line" ] ; then # only send a command if the line isn't null
+			echo "execute @r[type=armor_stand,name=$ARMORSTAND,tag=$ARMORSTAND] ~ ~ ~ $mc_line" >> "$MC_INPUT"
+		fi
 	done
 }
 
@@ -47,7 +49,9 @@ function mc() {
 
 function mc_ignore_armorstand() {
 	echo "$*" | while read mc_line ; do
-		echo "$mc_line" > "$MC_INPUT"
+		if [ "$mc_line" ] ; then
+			echo "$mc_line" >> "$MC_INPUT"
+		fi
 	done
 }
 
@@ -76,8 +80,11 @@ function grab() {
 	mc scoreboard players set "$1" grab 1
 }
 
+# function trigger runs a trigger in all loaded plugin directories
+# usage grab <$trigger> <$arguments>
+
 function trigger() {
-	mc "$("$PLUGINS/$1" "${@:2}")" # maybe *
+	mc "$("$PLUGINS/$1" "${@:2}")"
 }
 
 # while you're here
@@ -165,8 +172,10 @@ while [ "$running" = "1" ] ; do
 	echo "$line"
 	status="$(echo "$line" | sed 's/^\(\[..:..:..]\) \[\([^]]*\)]: \(.*\)$/\2/')"
 	line_trimmed="$(echo "$line" | sed 's/^\(\[..:..:..]\) \[\([^]]*\)]: \(.*\)$/\3/')"
-	if [ "$status" = "test" ] ; then
-		running="0"
+	if [ "$status" = "Wrapper thread/INFO" ] ; then
+		if echo "$line_trimmed" | grep -q "Wrapper halting..." ; then
+			running="0"
+		fi
 	elif [ "$status" = "Server thread/INFO" ] ; then
 		# Execute style input
 		if echo "$line_trimmed" | grep -q "^\[.*\].*$" ; then
@@ -224,7 +233,6 @@ while [ "$running" = "1" ] ; do
 		# NBT data dump
 		elif echo "$line_trimmed" | grep -q "^The data tag did not change: .*$" ; then
 			nbtdata="$(echo "$line_trimmed" | ./parse_nbt.sed)"
-			#mc "$("$PLUGINS/minecraft/command/failure/entitydata_blockdata.py" "$nbtdata")"
 			trigger minecraft/command/failure/entitydata_blockdata.py "$nbtdata"
 		# Player message in chat
 		elif echo "$line_trimmed" | grep -q '^<.*> .*$' ; then
@@ -232,7 +240,7 @@ while [ "$running" = "1" ] ; do
 			message="$(echo "$line_trimmed" | sed 's/^<\([^>]*\)> \(.*\)$/\2/')"
 			if echo "$message" | grep -q "^$PREFIX.*$" ; then
 				command=($(echo "$message" | sed "s/^"$PREFIX"\(.*\)$/\1/"))
-				. "$PLUGINS/wrapper/global_message_prefix" "$player" "$command"
+				trigger wrapper/global_message_prefix "$player" "${command[@]}"
 			else
 				. "$PLUGINS/minecraft/global_message"
 			fi
