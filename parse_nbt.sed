@@ -2,7 +2,9 @@
 
 # Parses NBT/JSON output from Minecraft entity and block data into standard JSON
 
-# Strips irrelevant error message
+# Strips irrelevant message
+s/^\[[^:]*: \(.*\)]$/\1/
+s/^Entity data updated to: //
 s/^The data tag did not change: //
 
 # Strips unwanted list numbers
@@ -15,4 +17,4 @@ s/\([[{,]\)\([^]}[{,"][^]},:]*\)\([]},:]\)/\1"\2"\3/g
 s/\([,:]\)\([^[{"][^]},"]*\)\([]},]\)/\1"\2"\3/g
 
 # Formats numbers, tries to avoid indices
-s/\([[,:]\)"\(-\?[0-9]\+\.\?[0-9]*\)[bslfdL]\?"/\1\2/g
+s/\([[,:]\)"\(-\?[0-9]\+\.\?[0-9]*\)\(E\?\-\?[0-9]*\)[bslfdL]\?"/\1\2\3/g

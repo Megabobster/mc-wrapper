@@ -1,16 +1,16 @@
 #!/bin/bash
 
+function grab() {
+	echo scoreboard players set "$player" fail 0
+	echo "${@:2}"
+	echo scoreboard players set "$1" grab 1
+}
+
 . default_config.txt
 . config.txt
 
 player="$1"
 command=("${@:2}")
-
-function grab() {
-	echo scoreboard players set fail grab 0
-	echo "${@:2}"
-	echo scoreboard players set "$1" grab 1
-}
 
 # triggers when a message starting with $PREFIX is said in global chat
 # passes $command as an array so prefix commands can have arbitrary arguments

@@ -1,6 +1,0 @@
-#!/bin/bash
-
-# triggers when an entity's entitydata is successfully updated via the entitydata command
-# variables are as follows
-# ["$executer": Entity data updated to: "$nbtdata"]
-

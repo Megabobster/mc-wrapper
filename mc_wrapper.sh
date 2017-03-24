@@ -75,7 +75,7 @@ function mc_ignore_armorstand() {
 # for example it throws $ERR_MULTIPLE_GRAB_INPUTS on a failed execute command
 
 function grab() {
-	mc scoreboard players set fail grab 0
+	mc scoreboard players set "$player" fail 0
 	mc "${@:2}"
 	mc scoreboard players set "$1" grab 1
 }
@@ -86,11 +86,6 @@ function grab() {
 function trigger() {
 	mc "$("$PLUGINS/$1" "${@:2}")"
 }
-
-# while you're here
-# $set_score_zero sets $player's $objective score to 0 at the end of the server tick
-# usage: $set_score_zero=<objective>
-# use this to prevent $player spamming things and breaking them
 
 # Not Options?:
 DEFAULTS="default_config.txt"
@@ -190,15 +185,16 @@ while [ "$running" = "1" ] ; do
 					score="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\3/')"
 					if [ "$executer" = "$ARMORSTAND" -a "$objective" = "grab" -a "$score" = "1" ] ; then
 						grab="$player"
-						if echo "$last" | grep -q '^Set score of grab for player fail to 0$' ; then
+						if echo "$last" | grep -q '^Set score of fail for player .* to 0$' ; then
 							mc say "$ERR_GRAB_INPUT_NOT_RECEIVED" "$grab".
-						elif ! echo "$fail" | grep -q '^Set score of grab for player fail to 0$' ; then
+						elif ! echo "$fail" | grep -q '^Set score of fail for player .* to 0$' ; then
 							mc say "$ERR_MULTIPLE_GRAB_INPUTS" "$grab".
 						else
-							. "$PLUGINS/wrapper/grab"
+							grabber="$(echo "$fail" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\2/')"
+							trigger wrapper/grab "$grab" "$grabber" "$last"
 						fi
 					else
-						. "$PLUGINS/minecraft/command/success/scoreboard_score_set"
+						trigger minecraft/command/success/scoreboard_score_set "$executer" "$objective" "$player" "$score"
 					fi
 				# Teleports
 				elif echo "$result" | grep -q "^Teleported .* to .*$" ; then
@@ -208,14 +204,14 @@ while [ "$running" = "1" ] ; do
 						x="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\1/')"
 						y="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\2/')"
 						z="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\3/')"
-						. "$PLUGINS/minecraft/command/success/teleport_coodinates"
+						. "$PLUGINS/minecraft/command/success/teleport_coordinates"
 					else
 						. "$PLUGINS/minecraft/command/success/teleport_entity"
 					fi
 				# Entitydata updates
 				elif echo "$result" | grep -q "^Entity data updated to: .*$" ; then
-					nbtdata="$(echo "$line_trimmed" | sed 's/^Entity data updated to: //')"
-					. "$PLUGINS/minecraft/command/success/entitydata"
+					nbtdata="$(echo "$line_trimmed" | ./parse_nbt.sed)"
+					trigger minecraft/command/success/entitydata.py "$executer" "$nbtdata"
 				# Saved the world
 				elif echo "$result" | grep -q "^Saved the world$" ; then
 					. "$PLUGINS/minecraft/command/success/save-all"
@@ -256,10 +252,6 @@ while [ "$running" = "1" ] ; do
 		if echo "$last" | grep -q "^Failed to execute '.*' as .*$" ; then
 			last="$fail"
 			fail="$temp"
-		fi
-		if [ -n "$set_score_zero" ] ; then
-			mc scoreboard players set "$player" "$set_score_zero" 0
-			set_score_zero=
 		fi
 	fi
 done < "$MC_OUTPUT"
