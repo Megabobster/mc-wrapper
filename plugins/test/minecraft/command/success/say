@@ -1,5 +1,10 @@
 #!/bin/bash
 
+. lib/bash.sh
+
+executer="$1"
+message="$2"
+
 # triggers when the /say command is run
 # variables available are as follows:
 # ["$executer"] "$message"

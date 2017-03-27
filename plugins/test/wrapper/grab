@@ -1,13 +1,6 @@
 #!/bin/bash
 
-#function grab() {
-#	echo scoreboard players set "$grabber" fail 0
-#	echo "${@:2}"
-#	echo scoreboard players set "$1" grab 1
-#}
-
-. default_config.txt
-. config.txt
+. lib/bash.sh
 
 grab="$1"
 grabber="$2"
@@ -19,33 +12,33 @@ last="$3"
 
 if [ "$grab" = "blend" ] ; then
 	if echo "$last" | grep -q '^.* has .* that match the criteria$' ; then
-		echo scoreboard players set "$grabber" blend 1
-		echo execute "$grabber" '~ ~ ~' scoreboard players set @e[type=Item,c=1,r=3] blend 2
+		mc scoreboard players set "$grabber" blend 1
+		mc execute "$grabber" '~ ~ ~' scoreboard players set @e[type=Item,c=1,r=3] blend 2
 	elif echo "$last" | grep -q '^Could not clear the inventory of .*, no items to remove$' ; then
-		echo tellraw "$grabber" [\"["$ARMORSTAND"] Blending costs 1 book\"]
+		mc tellraw "$grabber" [\"["$ARMORSTAND"] Blending costs 1 book\"]
 	elif echo "$last" | grep -q '^The data tag did not change: {.*}$' ; then
 		executer="$(echo "$last" | sed 's/^.*Thrower:"\([^"]*\)".*$/\1/')"
 		if echo "$last" | grep -q '^.*{ench:.*}$' ; then
 			#repair_cost="$(echo \"$last\" | sed 's///')"
-			echo kill "$grabber"
-			echo clear "$executer" minecraft:book -1 1
-			echo xp -5L "$executer" # todo make this based on RepairCost, maybe also increase RepairCost with blend, and check to make sure the player can afford it
-			echo give "$executer" minecraft:enchanted_book 1 0 "$(echo "$last" | sed 's/^.*{ench:/{StoredEnchantments:/;s/,Damage:0s.*$//')"
+			mc kill "$grabber"
+			mc clear "$executer" minecraft:book -1 1
+			mc xp -5L "$executer" # todo make this based on RepairCost, maybe also increase RepairCost with blend, and check to make sure the player can afford it
+			mc give "$executer" minecraft:enchanted_book 1 0 "$(echo "$last" | sed 's/^.*{ench:/{StoredEnchantments:/;s/,Damage:0s.*$//')"
 		else # not necessary if there's ever a NBT wildcard for dataTag selectors {Item:{tag:{ench:*}}}
-			echo tellraw "$executer" [\"["$ARMORSTAND"] Item not enchanted\"]
-			echo scoreboard players reset "$grabber" blend
+			mc tellraw "$executer" [\"["$ARMORSTAND"] Item not enchanted\"]
+			mc scoreboard players reset "$grabber" blend
 		fi
-		echo scoreboard players set "$executer" blend 0
+		mc scoreboard players set "$executer" blend 0
 	else # make sure to put this else at the end of each grab
-		echo say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab".
+		mc say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab".
 	fi
 elif [ "$grab" = "smash" ] ; then
 	if echo "$last" | grep -q '^The data tag did not change: .*$' ; then
-		echo blockdata -11 4 -9
-		echo scoreboard players set "$grabber" smash 0
+		mc blockdata -11 4 -9
+		mc scoreboard players set "$grabber" smash 0
 	else
-		echo say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab"
+		mc say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab"
 	fi
 else # make sure to leave this here
-	echo say "$ERR_INVALID_GRAB" "$grab".
+	mc say "$ERR_INVALID_GRAB" "$grab".
 fi

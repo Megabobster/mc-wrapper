@@ -1,7 +1,6 @@
 #!/bin/bash
 
-. default_config.txt
-. config.txt
+. include.sh
 
 running=1
 while [ "$running" = 1 ] ; do
@@ -9,9 +8,9 @@ while [ "$running" = 1 ] ; do
 	if [ "$line" = quit ] ; then
 		running=0
 	elif [ "$line" = halt ] ; then
-		./mc_output.sh "Wrapper halting..." # todo: config
+		wrapper "Wrapper halting..." >> mc_output # todo: config
 	elif [ "$line" = start ] ; then
-		./mc_wrapper.sh
+		./mc_wrapper.sh &
 	elif [ "$line" = help ] ; then # todo: better help message
 		echo "quit	quits this"
 		echo "halt	kills the wrapper"

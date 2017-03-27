@@ -1,9 +1,14 @@
 #!/bin/bash
 
-# triggers on running the save-all command
-# no special variables
+. lib/bash.sh
 
-if [ "$executer" = "$ARMORSTAND" ] ; then # todo: figure out where exactly executer comes from
+executer="$1"
+
+# triggers on running the save-all command
+# available variables:
+# ["$executer": Saved the world]
+
+if [ "$executer" = "$ARMORSTAND" ] ; then # todo: better backup script
 	zip -r "$BACKUP_DIR"/"$LEVEL_NAME"\_"$(date +%Y-%m-%d.%H.%M.%S)".zip "$MINECRAFT_DIR"/"$LEVEL_NAME"
 	cd "$BACKUP_DIR" # todo: create directory or error if it doesn't exist
 	ls -td "$LEVEL_NAME"* | sed -e '1,7d' | xargs -d '\n' rm

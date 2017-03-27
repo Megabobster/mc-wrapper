@@ -1,5 +1,13 @@
 #!/bin/bash
 
+. lib/bash.sh
+
+executer="$1"
+player="$2"
+x="$3"
+y="$4"
+z="$5"
+
 # triggers when an entity is teleported
 # variables are as follows:
 # ["$executer": Teleported "$player" to "$x", "$y", "$z"]

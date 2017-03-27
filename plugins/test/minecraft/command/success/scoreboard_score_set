@@ -1,13 +1,6 @@
 #!/bin/bash
 
-function grab() {
-        echo scoreboard players set "$player" fail 0
-        echo "${@:2}"
-        echo scoreboard players set "$1" grab 1
-}
-
-. default_config.txt
-. config.txt
+. lib/bash.sh
 
 executer="$1"
 objective="$2"
@@ -19,13 +12,13 @@ score="$4"
 # ["$executer": Set score of "$objective" for player "$player" to "$score"]
 
 if [ "$objective" = "blend" -a "$score" = "2" ] ; then # only items should have their entitydata set to two
-	#echo scoreboard players tag "$player" add blend
-	#echo entitydata "$player" {asdf:"true"} #todo: use entitydata instead of grab
+	#mc scoreboard players tag "$player" add blend
+	#mc entitydata "$player" {asdf:"true"} #todo: use entitydata instead of grab
 	grab blend entitydata "$player" {}
 elif [ "$objective" = "smash" -a "$score" = "1" ] ; then
 	grab smash blockdata -11 4 -9 {} # todo: implement multiple smashers in a world
 elif [ "$objective" = "test" ] ; then
-	echo say "$executer" "$objective" "$player" "$score"
+	mc say "$executer" "$objective" "$player" "$score"
 elif [ "$objective" = "onGround" -a "$score" = "1" ] ; then
-	echo effect "$player" minecraft:levitation 1 1 true
+	mc effect "$player" minecraft:levitation 1 1 true
 fi

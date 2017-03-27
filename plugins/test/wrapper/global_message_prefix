@@ -1,13 +1,6 @@
 #!/bin/bash
 
-function grab() {
-	echo scoreboard players set "$player" fail 0
-	echo "${@:2}"
-	echo scoreboard players set "$1" grab 1
-}
-
-. default_config.txt
-. config.txt
+. lib/bash.sh
 
 player="$1"
 command=("${@:2}")
@@ -18,9 +11,9 @@ command=("${@:2}")
 # <"$player"> $PREFIX"$command"
 
 if [ "$player" = "Megabobster" -a "${command[0]}" = "halt" ] ; then
-	./mc_output.sh "Wrapper halting..." # todo: config option
+	wrapper "Wrapper halting..." # todo: config option
 elif [ "${command[0]}" = "blend" ] ; then
-	grabber="$player"
+	grabber="$player" # todo: make sure I can remove this line
 	grab blend clear @a[name="$player",score_blend=0] minecraft:book -1 0
 elif [ "${command[0]}" = "bork" ] ; then # test cases for grab error handling
 	if [ "${command[1]}" = "1" ] ; then
@@ -32,25 +25,25 @@ elif [ "${command[0]}" = "bork" ] ; then # test cases for grab error handling
 	elif [ "${command[1]}" = "4" ] ; then
 		grab bork say bork			# ERR_INVALID_GRAB
 	else
-		echo tellraw "$player" '[{"text":"['"$ARMORSTAND"'] Usage: !bork <1-4>"}]'
+		mc tellraw "$player" '[{"text":"['"$ARMORSTAND"'] Usage: !bork <1-4>"}]'
 	fi
 elif [ "${command[0]}" = "run" ] ; then
 	if [ "${command[1]}" -le "16" ] ; then
 		if [ "${command[2]}" ] ; then
 			for i in $(seq 1 "${command[1]}") ; do
-				echo execute "$player" '~ ~ ~' "${command[@]:2}"
+				mc execute "$player" '~ ~ ~' "${command[@]:2}"
 			done
 		else
-			echo tellraw "$player" '[{"text":"['"$ARMORSTAND"'] Usage: !run <1-16> <command>"}]'
+			mc tellraw "$player" '[{"text":"['"$ARMORSTAND"'] Usage: !run <1-16> <command>"}]'
 		fi
 	else
-		echo tellraw "$player" '[{"text":"['"$ARMORSTAND"'] Usage: !run <1-16> <command>"}]'
+		mc tellraw "$player" '[{"text":"['"$ARMORSTAND"'] Usage: !run <1-16> <command>"}]'
 	fi
 elif [ "${command[0]}" = "level-name" ] ; then
-	echo say "$LEVEL_NAME"
+	mc say "$LEVEL_NAME"
 #elif [ "${command[0]}" = "xyz" ] ; then # todo: trigger like grab, not grab...
-#	echo execute "$player" '~ ~ ~' summon ArmorStand '~ ~ ~' '{CustomName:"xyz",Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:"xyz"]}'
+#	mc execute "$player" '~ ~ ~' summon ArmorStand '~ ~ ~' '{CustomName:"xyz",Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:"xyz"]}'
 #	grab xyz tp @e[name=xyz,tag=xyz,c=1] '~ ~ ~'
 else
-	echo say "$ERR_INVALID_MESSAGE_COMMAND" "${command[0]}".
+	mc say "$ERR_INVALID_MESSAGE_COMMAND" "${command[0]}".
 fi

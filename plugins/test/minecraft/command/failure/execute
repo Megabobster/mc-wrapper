@@ -1,5 +1,10 @@
 #!/bin/bash
 
+. lib/bash.sh
+
+command="$1"
+executer="$2"
+
 # triggers on failed execute commands
 # variables available are as follows:
 # Failed to execute '"$command"' as "$executer"

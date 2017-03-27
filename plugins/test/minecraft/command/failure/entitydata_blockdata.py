@@ -1,6 +1,13 @@
 #!/usr/bin/python
 
 import sys, json
+
+def mc(command):
+	print "mc", command
+
+def wrapper(command):
+	print "wrapper", command
+
 nbtdata = json.loads(sys.argv[1])
 
 # triggers when entitydata <entity> {} is run, which spits out the entity's full NBT data
@@ -10,11 +17,11 @@ nbtdata = json.loads(sys.argv[1])
 # Block data
 try:
 	if nbtdata["id"]:
-		print "say", nbtdata["x"], nbtdata["y"], nbtdata["z"]
+		mc("say " + str(nbtdata["x"]) + " " + str(nbtdata["y"]) + " " + str(nbtdata["z"]))
 # Entity data
 except KeyError:
 	try:
 		if nbtdata["CustomName"] == "xyz":
-			print "say", nbtdata["Pos"][0], nbtdata["Pos"][1], nbtdata["Pos"][2]
+			mc("say " + str(nbtdata["Pos"][0]) + " " + str(nbtdata["Pos"][1]) + " " + str(nbtdata["Pos"][2]))
 	except KeyError:
 		pass

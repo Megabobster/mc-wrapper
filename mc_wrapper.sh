@@ -55,6 +55,18 @@ function mc_ignore_armorstand() {
 	done
 }
 
+# function wrapper sends wrapper output in format
+# [timestamp] [Wrapper thread/INFO]: (args)
+# todo: append to latest.log as well as outputting to wrapper
+
+function wrapper() {
+	echo "$*" | while read mc_line ; do
+		if [ "$mc_line" ] ; then
+			echo '['"$(date +%H:%M:%S)"'] [Wrapper thread/INFO]: '"$mc_line" >> "$MC_OUTPUT"
+		fi
+	done
+}
+
 # todo: good programming might make grab go away
 
 # function grab runs arbitrary minecraft command and gets arbitrary output
@@ -84,7 +96,15 @@ function grab() {
 # usage grab <$trigger> <$arguments>
 
 function trigger() {
-	mc "$("$PLUGINS/$1" "${@:2}")"
+	"$PLUGINS"/"$1" "${@:2}" | while read mc_line ; do
+		if echo "$mc_line" | grep -q "^mc " ; then # maybe: some kind of case thing?
+			mc "$(echo "$mc_line" | sed 's/^mc //')"
+		elif echo "$mc_line" | grep -q "^mc_ignore_armorstand " ; then
+			mc_ignore_armorstand "$(echo "$mc_line" | sed 's/^mc_ignore_armorstand //')"
+		elif echo "$mc_line" | grep -q "^wrapper " ; then
+			wrapper "$(echo "$mc_line" | sed 's/^wrapper //')"
+		fi
+	done
 }
 
 # Not Options?:
@@ -94,7 +114,7 @@ WRAPPER_DIR="$PWD" # todo: figure this the hell out, I think this script must be
 
 # Load Config:
 if ! [ -e "$DEFAULTS" ] ; then
-	echo "Default configuration ($DEFAULTS) not present or renamed, exiting..."
+	echo 'Default configuration ('"$DEFAULTS"') not present or renamed, exiting...'
 	exit # maybe: put default settings here instead of in a separate file, then generate config.txt
 fi
 . "$DEFAULTS"
@@ -168,7 +188,7 @@ while [ "$running" = "1" ] ; do
 	status="$(echo "$line" | sed 's/^\(\[..:..:..]\) \[\([^]]*\)]: \(.*\)$/\2/')"
 	line_trimmed="$(echo "$line" | sed 's/^\(\[..:..:..]\) \[\([^]]*\)]: \(.*\)$/\3/')"
 	if [ "$status" = "Wrapper thread/INFO" ] ; then
-		if echo "$line_trimmed" | grep -q "Wrapper halting..." ; then
+		if echo "$line_trimmed" | grep -q "^Wrapper halting...$" ; then
 			running="0"
 		fi
 	elif [ "$status" = "Server thread/INFO" ] ; then
@@ -204,9 +224,9 @@ while [ "$running" = "1" ] ; do
 						x="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\1/')"
 						y="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\2/')"
 						z="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\3/')"
-						. "$PLUGINS/minecraft/command/success/teleport_coordinates"
+						trigger minecraft/command/success/teleport_coordinates "$executer" "$player" "$x" "$y" "$z"
 					else
-						. "$PLUGINS/minecraft/command/success/teleport_entity"
+						trigger minecraft/command/success/teleport_entity "$executer" "$player" "$destination"
 					fi
 				# Entitydata updates
 				elif echo "$result" | grep -q "^Entity data updated to: .*$" ; then
@@ -214,18 +234,18 @@ while [ "$running" = "1" ] ; do
 					trigger minecraft/command/success/entitydata.py "$executer" "$nbtdata"
 				# Saved the world
 				elif echo "$result" | grep -q "^Saved the world$" ; then
-					. "$PLUGINS/minecraft/command/success/save-all"
+					trigger minecraft/command/success/save-all "$executer"
 				fi
 			# /say messages
 			elif echo "$line_trimmed" | grep -q '^\[.*\] .*$' ; then
 				message="$(echo "$line_trimmed" | sed 's/^\[[^]]*\] //')"
-				. "$PLUGINS/minecraft/command/success/say"
+				trigger minecraft/command/success/say "$executer" "$message"
 			fi
 		# Execute command failure
 		elif echo "$line_trimmed" | grep -q "^Failed to execute '.*' as .*$" ; then
 			command="$(echo "$line_trimmed" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\1/")"
 			executer="$(echo "$line_trimmed" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\2/")"
-			. "$PLUGINS/minecraft/command/failure/execute"
+			trigger minecraft/command/failure/execute "$command" "$executer"
 		# NBT data dump
 		elif echo "$line_trimmed" | grep -q "^The data tag did not change: .*$" ; then
 			nbtdata="$(echo "$line_trimmed" | ./parse_nbt.sed)"
@@ -238,7 +258,7 @@ while [ "$running" = "1" ] ; do
 				command=($(echo "$message" | sed "s/^"$PREFIX"\(.*\)$/\1/"))
 				trigger wrapper/global_message_prefix "$player" "${command[@]}"
 			else
-				. "$PLUGINS/minecraft/global_message"
+				trigger minecraft/global_message "$player" "$message"
 			fi
 		# Server stopping
 		elif echo "$line_trimmed" | grep -q "^Stopping server$" ; then
