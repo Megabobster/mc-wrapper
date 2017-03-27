@@ -48,7 +48,7 @@ function mc() {
 # mc is fancier, mc_ignore_armorstand will always work
 
 function mc_ignore_armorstand() {
-	echo "$*" | while read mc_line ; do
+	echo "$@" | while read mc_line ; do
 		if [ "$mc_line" ] ; then
 			echo "$mc_line" >> "$MC_INPUT"
 		fi
@@ -60,7 +60,7 @@ function mc_ignore_armorstand() {
 # todo: append to latest.log as well as outputting to wrapper
 
 function wrapper() {
-	echo "$*" | while read mc_line ; do
+	echo "$@" | while read mc_line ; do
 		if [ "$mc_line" ] ; then
 			echo '['"$(date +%H:%M:%S)"'] [Wrapper thread/INFO]: '"$mc_line" >> "$MC_OUTPUT"
 		fi
@@ -145,7 +145,7 @@ elif [ -e "$SERVER_PIDFILE" -o -e "$MC_INPUT" -o -e "$MC_OUTPUT" ] ; then
 else # only runs if there is no mc_io and both pidfiles aren't present
 	mkfifo "$MC_INPUT"
 	mkfifo "$MC_OUTPUT"
-	tail --follow=name "$MC_INPUT" | . mc_start.sh > "$MC_OUTPUT" & # todo: maybe use cat instead of tail, also make this not output stuff on tail's end
+	tail --follow=name "$MC_INPUT" | . lib/server_start.sh > "$MC_OUTPUT" & # todo: maybe use cat instead of tail, also make this not output stuff on tail's end
 	echo "SERVER_PID=$!" > "$SERVER_PIDFILE"
 fi
 echo "WRAPPER_PID=$$" > "$WRAPPER_PIDFILE"
@@ -230,7 +230,7 @@ while [ "$running" = "1" ] ; do
 					fi
 				# Entitydata updates
 				elif echo "$result" | grep -q "^Entity data updated to: .*$" ; then
-					nbtdata="$(echo "$line_trimmed" | ./parse_nbt.sed)"
+					nbtdata="$(echo "$line_trimmed" | ./lib/parse_nbt.sed)"
 					trigger minecraft/command/success/entitydata.py "$executer" "$nbtdata"
 				# Saved the world
 				elif echo "$result" | grep -q "^Saved the world$" ; then
@@ -248,7 +248,7 @@ while [ "$running" = "1" ] ; do
 			trigger minecraft/command/failure/execute "$command" "$executer"
 		# NBT data dump
 		elif echo "$line_trimmed" | grep -q "^The data tag did not change: .*$" ; then
-			nbtdata="$(echo "$line_trimmed" | ./parse_nbt.sed)"
+			nbtdata="$(echo "$line_trimmed" | ./lib/parse_nbt.sed)"
 			trigger minecraft/command/failure/entitydata_blockdata.py "$nbtdata"
 		# Player message in chat
 		elif echo "$line_trimmed" | grep -q '^<.*> .*$' ; then

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. lib/bash.sh
+. lib/plugin_bash.sh
 
 executer="$1"
 objective="$2"

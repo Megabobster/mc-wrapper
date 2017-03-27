@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. lib/bash.sh
+. lib/plugin_bash.sh
 
 grab="$1"
 grabber="$2"
