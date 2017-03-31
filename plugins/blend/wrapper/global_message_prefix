@@ -1,0 +1,18 @@
+#!/bin/bash
+
+. lib/plugin_bash.sh
+
+player="$1"
+command=("${@:2}")
+
+# triggers when a message starting with $PREFIX is said in global chat
+# passes $command as an array so prefix commands can have arbitrary arguments
+# variables available are as follows:
+# <"$player"> $PREFIX"$command"
+
+if [ "${command[0]}" = "blend" ] ; then
+	grab blend clear @a[name="$player",score_blend=0] minecraft:book -1 0
+else
+	plugin_exit_code=1
+fi
+exit "$plugin_exit_code"

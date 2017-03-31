@@ -1,0 +1,21 @@
+#!/bin/bash
+
+. lib/plugin_bash.sh
+
+executer="$1"
+objective="$2"
+player="$3"
+score="$4"
+
+# triggers when a scoreboard value is updated
+# variables available are as follows:
+# ["$executer": Set score of "$objective" for player "$player" to "$score"]
+
+if [ "$objective" = "blend" -a "$score" = "2" ] ; then # only items should have their entitydata set to two
+	#mc scoreboard players tag "$player" add blend
+	#mc entitydata "$player" {asdf:"true"} #todo: use entitydata instead of grab
+	grab blend entitydata "$player" {}
+else
+	plugin_exit_code=1
+fi
+exit "$plugin_exit_code"

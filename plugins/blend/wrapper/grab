@@ -1,0 +1,38 @@
+#!/bin/bash
+
+. lib/plugin_bash.sh
+
+grab="$1"
+grabber="$2"
+last_line="$3"
+
+# triggers when the grab function is run
+# variables available are "$grab", the argument passed to the grab function
+# and "$grabber", the player relevant to the called grab function
+
+if [ "$grab" = "blend" ] ; then
+	if echo "$last_line" | grep -q '^.* has .* that match the criteria$' ; then
+		mc scoreboard players set "$grabber" blend 1
+		mc execute "$grabber" '~ ~ ~' scoreboard players set @e[type=Item,c=1,r=3] blend 2
+	elif echo "$last_line" | grep -q '^Could not clear the inventory of .*, no items to remove$' ; then
+		mc tellraw "$grabber" [\"["$ARMORSTAND"] Blending costs 1 book\"]
+	elif echo "$last_line" | grep -q '^The data tag did not change: {.*}$' ; then
+		executer="$(echo "$last_line" | sed 's/^.*Thrower:"\([^"]*\)".*$/\1/')"
+		if echo "$last_line" | grep -q '^.*{ench:.*}$' ; then
+			#repair_cost="$(echo \"$last_line\" | sed 's///')"
+			mc kill "$grabber"
+			mc clear "$executer" minecraft:book -1 1
+			mc xp -5L "$executer" # todo make this based on RepairCost, maybe also increase RepairCost with blend, and check to make sure the player can afford it
+			mc give "$executer" minecraft:enchanted_book 1 0 "$(echo "$last_line" | sed 's/^.*{ench:/{StoredEnchantments:/;s/,Damage:0s.*$//')"
+		else # not necessary if there's ever a NBT wildcard for dataTag selectors {Item:{tag:{ench:*}}}
+			mc tellraw "$executer" [\"["$ARMORSTAND"] Item not enchanted\"]
+			mc scoreboard players reset "$grabber" blend
+		fi
+		mc scoreboard players set "$executer" blend 0
+	else # make sure to put this else at the end of each grab
+		mc say "$ERR_UNEXPECTED_GRAB_INPUT" "$grab".
+	fi
+else # make sure to leave this here
+	plugin_exit_code=1
+fi
+exit "$plugin_exit_code"

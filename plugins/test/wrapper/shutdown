@@ -1,0 +1,9 @@
+#!/bin/bash
+
+. lib/plugin_bash.sh
+
+# shutdown commands could theoretically be put here but be very careful as they
+# won't be run if the wrapper does not exit cleanly, which could potentially
+# bork your world if there is anything that depends on the shutdown commands
+
+mc kill @e[type=armor_stand,name="$ARMORSTAND",tag="$ARMORSTAND"]

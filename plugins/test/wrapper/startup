@@ -1,0 +1,12 @@
+#!/bin/bash
+
+. lib/plugin_bash.sh
+
+mc_ignore_armorstand kill @e[type=armor_stand,name="$ARMORSTAND",tag="$ARMORSTAND"]
+mc_ignore_armorstand summon armor_stand 0 0 0 '{CustomName:'"$ARMORSTAND"',Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:'"$ARMORSTAND"']}'
+# todo: constant for worldspawn instead of 0 0 0
+# mc_ignore_armorstand isn't necessary after this point, it just creates less errors if commands fail (like if the scoreboard already exists)
+mc_ignore_armorstand scoreboard objectives add grab dummy
+mc_ignore_armorstand scoreboard objectives add fail dummy
+
+mc_ignore_armorstand scoreboard objectives add smash dummy

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. include.sh
+. lib/plugin_bash.sh
 
 running=1
 while [ "$running" = 1 ] ; do

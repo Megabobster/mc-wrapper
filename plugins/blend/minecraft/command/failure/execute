@@ -12,4 +12,7 @@ executer="$2"
 if [ "$command" = "scoreboard players set @e[type=Item,c=1,r=3] blend 2" ] ; then
 	mc tellraw "$executer" [\"["$ARMORSTAND"] Put your item on the ground!\"]
 	mc scoreboard players set "$executer" blend 0
+else
+	plugin_exit_code=1
 fi
+exit "$plugin_exit_code"

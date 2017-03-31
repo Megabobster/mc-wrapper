@@ -1,0 +1,5 @@
+#!/bin/bash
+
+. lib/plugin_bash.sh
+
+mc_ignore_armorstand scoreboard objectives add blend dummy

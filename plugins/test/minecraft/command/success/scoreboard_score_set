@@ -11,14 +11,13 @@ score="$4"
 # variables available are as follows:
 # ["$executer": Set score of "$objective" for player "$player" to "$score"]
 
-if [ "$objective" = "blend" -a "$score" = "2" ] ; then # only items should have their entitydata set to two
-	#mc scoreboard players tag "$player" add blend
-	#mc entitydata "$player" {asdf:"true"} #todo: use entitydata instead of grab
-	grab blend entitydata "$player" {}
-elif [ "$objective" = "smash" -a "$score" = "1" ] ; then
+if [ "$objective" = "smash" -a "$score" = "1" ] ; then
 	grab smash blockdata -11 4 -9 {} # todo: implement multiple smashers in a world
 elif [ "$objective" = "test" ] ; then
 	mc say "$executer" "$objective" "$player" "$score"
 elif [ "$objective" = "onGround" -a "$score" = "1" ] ; then
 	mc effect "$player" minecraft:levitation 1 1 true
+else
+	plugin_exit_code=1
 fi
+exit "$plugin_exit_code"

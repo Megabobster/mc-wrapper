@@ -3,13 +3,14 @@
 # Options:
 PREFIX="!"
 ARMORSTAND="-"
-MINECRAFT_DIR="${PWD}" # no trailing slash, be careful about quotes here
-BACKUP_DIR="${PWD}/backups"
+MINECRAFT_DIR="$(pwd)" # no trailing slash, be careful about quotes here
+BACKUP_DIR="$(pwd)/backups"
 SERVER_JAR="minecraft_server.jar"
 JAVA_PATH="java"
 LAUNCH_ARGS="-Xmx1024M -Xms1024M"
 SCRIPT_NAME="mc_wrapper.sh"
-PLUGINS="${PWD}/plugins/test"
+PLUGIN_DIR="$(pwd)/plugins"
+LOADED_PLUGINS=("test" "blend")
 MC_INPUT="mc_input"
 MC_OUTPUT="mc_output"
 WRAPPER_PIDFILE="mc_wrapper.pid"
@@ -26,6 +27,9 @@ ERR_SCRIPT_MISSING="This program must be run from within the directory containin
 ERR_PLUGINS_MISSING="Plugins folder ($PLUGINS) not present or renamed, exiting..."
 ERR_SERVER_RUNNING="Server already running, starting wrapper..."
 ERR_BAD_EXIT="One or more files ($MC_INPUT, $MC_OUTPUT, or $SERVER_PIDFILE) still present from incomplete exit."
+
+ERR_OUTPUT_MALFORMED="Attempted to output unknown data type"
+ERR_PLUGIN_MALFORMED="Unhandled output from plugin"
 
 ERR_GRAB_INPUT_NOT_RECEIVED="Input not received in grab"
 ERR_MULTIPLE_GRAB_INPUTS="Too many inputs in grab"

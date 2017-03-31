@@ -12,9 +12,6 @@ command=("${@:2}")
 
 if [ "$player" = "Megabobster" -a "${command[0]}" = "halt" ] ; then
 	wrapper "Wrapper halting..." # todo: config option
-elif [ "${command[0]}" = "blend" ] ; then
-	grabber="$player" # todo: make sure I can remove this line
-	grab blend clear @a[name="$player",score_blend=0] minecraft:book -1 0
 elif [ "${command[0]}" = "bork" ] ; then # test cases for grab error handling
 	if [ "${command[1]}" = "1" ] ; then
 		grab bork tellraw @a '["bork"]'		# ERR_GRAB_INPUT_NOT_RECEIVED
@@ -45,5 +42,6 @@ elif [ "${command[0]}" = "level-name" ] ; then
 #	mc execute "$player" '~ ~ ~' summon ArmorStand '~ ~ ~' '{CustomName:"xyz",Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:"xyz"]}'
 #	grab xyz tp @e[name=xyz,tag=xyz,c=1] '~ ~ ~'
 else
-	mc say "$ERR_INVALID_MESSAGE_COMMAND" "${command[0]}".
+	plugin_exit_code=1
 fi
+exit "$plugin_exit_code"
