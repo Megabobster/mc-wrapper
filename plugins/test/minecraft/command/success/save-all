@@ -15,4 +15,7 @@ if [ "$executer" = "$ARMORSTAND" ] ; then # todo: better backup script
 	cd "$WRAPPER_DIR"
 	mc save-on
 	mc_ignore_armorstand say Server backup complete.
+else
+	plugin_exit_code=1
 fi
+exit "$plugin_exit_code"

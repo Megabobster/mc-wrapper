@@ -12,4 +12,7 @@ destination="$3"
 
 if [ "$player" = "xyz" -a "$destination" = "Megabobster" ]; then
 	mc entitydata @e[name=xyz,tag=-,type=armor_stand] {}
+else
+	plugin_exit_code=1
 fi
+exit "$plugin_exit_code"

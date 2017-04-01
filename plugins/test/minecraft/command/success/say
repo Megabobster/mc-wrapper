@@ -16,4 +16,7 @@ if [ "$message" = "Server backing up." ] ; then
 	mc save-all flush
 elif [ "$message" = "test" ] ; then
 	mc execute "@r[c=1]" '~ ~ ~' summon Pig
+else
+	plugin_exit_code=1
 fi
+exit "$plugin_exit_code"

@@ -14,4 +14,7 @@ z="$5"
 
 if [ "$player" = "Pig" ] ; then
 	mc say "Teleported $player to $x, $y, $z."
+else
+	plugin_exit_code=1
 fi
+exit "$plugin_exit_code"

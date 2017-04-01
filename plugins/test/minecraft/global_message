@@ -19,4 +19,7 @@ elif [ "$message" = "test" ] ; then
 		mc 'execute '"$player"' ~ ~ ~ summon Pig'
 		mc 'give '"$player"' dirt'
 	done
+else
+	plugin_exit_code=1
 fi
+exit "$plugin_exit_code"
