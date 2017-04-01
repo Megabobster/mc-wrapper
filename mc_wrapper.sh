@@ -139,137 +139,127 @@ else # only runs if there is no mc_io and both pidfiles aren't present
 fi
 echo "WRAPPER_PID=$$" > "$WRAPPER_PIDFILE"
 
-# Start Wrapper:
 output mc_ignore_armorstand say "$WRAPPER_INIT_START"
-running="1"
-while [ "$running" = "1" ] ; do
+wrapper_status="starting"
+while [ "$wrapper_status" != "done" ] ; do
 	read line
-	if echo "$line" | grep '^\[..:..:..\] \[Server thread/INFO\]: Starting minecraft server version .*$' ; then
-		running="2"
-		while [ "$running" = "2" ] ; do
-			read line
-			echo "$line"
-			if echo "$line" | grep -q '^\[..:..:..\] \[Server thread/INFO\]: Done (.*)! For help, type "help" or "?"$' ; then # todo: make sure this is indeed outputting everything
-				running="1"
-			fi
-		done
-	elif echo "$line" | grep "^\[..:..:..\] \[Server thread/INFO\]: \[Server\] $WRAPPER_INIT_START$" ; then # todo: add timestamp requirement; ignore init starts from the past
-		trigger wrapper/startup
-		running="0"
-	fi
-done < "$MC_OUTPUT"
-output mc_ignore_armorstand say "$WRAPPER_INIT_DONE"
-
-running="1"
-# main loop starts here
-while [ "$running" = "1" ] ; do
-# <the magic>
-	read line
-	echo "$line"
 	line_timestamp="$(echo "$line" | sed 's/^\(\[..:..:..]\) \[\([^]]*\)]: \(.*\)$/\1/')"
 	line_status="$(echo "$line" | sed 's/^\(\[..:..:..]\) \[\([^]]*\)]: \(.*\)$/\2/')"
 	line_data="$(echo "$line" | sed 's/^\(\[..:..:..]\) \[\([^]]*\)]: \(.*\)$/\3/')"
-	if [ "$line_status" = "Wrapper thread/INFO" ] ; then
-		if echo "$line_data" | grep -q "^Wrapper halting...$" ; then
-			running="0"
+	if [ "$wrapper_status" = "starting" ] ; then
+		if echo "$line_data" | grep '^Starting minecraft server version .*$' ; then
+			wrapper_status="booting"
+		elif echo "$line" | grep "^\[..:..:..\] \[Server thread/INFO\]: \[Server\] $WRAPPER_INIT_START$" ; then # todo: add timestamp requirement; ignore init starts from the past
+			trigger wrapper/startup
+			output mc_ignore_armorstand say "$WRAPPER_INIT_DONE"
+			wrapper_status="running"
 		fi
-	elif [ "$line_status" = "Server thread/INFO" ] ; then
-		# Execute style input
-		if echo "$line_data" | grep -q "^\[.*\].*$" ; then
-			executer="$(echo "$line_data" | sed 's/^\[\([^]:]*\)[]:] .*$/\1/')"
-			# Executed commands
-			if echo "$line_data" | grep -q "^\[.*: .*\]$" ; then
-				result="$(echo "$line_data" | sed 's/^\[[^:]*: \(.*\)\]$/\1/')"
-				# Scoreboard updates
-				if echo "$result" | grep -q "^Set score of .* for player .* to .*$" ; then
-					objective="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\1/')"
-					player="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\2/')"
-					score="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\3/')"
-					if [ "$executer" = "$ARMORSTAND" -a "$objective" = "grab" -a "$score" = "1" ] ; then
-						grab="$player"
-						if echo "$last_line" | grep -q '^Set score of fail for player .* to 0$' ; then
-							output mc say "$ERR_GRAB_INPUT_NOT_RECEIVED" "$grab".
-						elif ! echo "$fail_line" | grep -q '^Set score of fail for player .* to 0$' ; then
-							output mc say "$ERR_MULTIPLE_GRAB_INPUTS" "$grab".
-						else
-							grabber="$(echo "$fail_line" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\2/')"
-							if ! trigger wrapper/grab "$grab" "$grabber" "$last_line" ; then
-								output mc say "$ERR_INVALID_GRAB" "$grab".
+	elif [ "$wrapper_status" = "booting" ] ; then
+		echo "$line"
+		if echo "$line_data" | grep -q '^Done (.*)! For help, type "help" or "?"$' ; then # todo: make sure this is indeed outputting everything
+			wrapper_status="starting"
+		fi
+	elif [ "$wrapper_status" = "stopping" ] ; then
+		echo "$line"
+		if echo "$line_data" | grep -q -e "^\[Server\] $WRAPPER_HALT" -e "^Saving worlds$" ; then
+			rm "$WRAPPER_PIDFILE"
+			wrapper_status="done"
+		fi
+	elif [ "$wrapper_status" = "running" ] ; then
+		echo "$line"
+		if [ "$line_status" = "Wrapper thread/INFO" ] ; then
+
+			if echo "$line_data" | grep -q "^Wrapper halting...$" ; then
+				trigger wrapper/shutdown
+				output mc_ignore_armorstand say "$WRAPPER_HALT"
+				wrapper_status="stopping"
+			fi
+		elif [ "$line_status" = "Server thread/INFO" ] ; then
+			# Server stopping
+			if echo "$line_data" | grep -q "^Stopping server$" ; then
+				wrapper_status="stopping"
+			# Execute style input
+			elif echo "$line_data" | grep -q "^\[.*\].*$" ; then
+				executer="$(echo "$line_data" | sed 's/^\[\([^]:]*\)[]:] .*$/\1/')"
+				# Executed commands
+				if echo "$line_data" | grep -q "^\[.*: .*\]$" ; then
+					result="$(echo "$line_data" | sed 's/^\[[^:]*: \(.*\)\]$/\1/')"
+					# Scoreboard updates
+					if echo "$result" | grep -q "^Set score of .* for player .* to .*$" ; then
+						objective="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\1/')"
+						player="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\2/')"
+						score="$(echo "$result" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\3/')"
+						if [ "$executer" = "$ARMORSTAND" -a "$objective" = "grab" -a "$score" = "1" ] ; then
+							grab="$player"
+							if echo "$last_line" | grep -q '^Set score of fail for player .* to 0$' ; then
+								output mc say "$ERR_GRAB_INPUT_NOT_RECEIVED" "$grab".
+							elif ! echo "$fail_line" | grep -q '^Set score of fail for player .* to 0$' ; then
+								output mc say "$ERR_MULTIPLE_GRAB_INPUTS" "$grab".
+							else
+								grabber="$(echo "$fail_line" | sed 's/^Set score of \(.*\) for player \(.*\) to \(.*\)$/\2/')"
+								if ! trigger wrapper/grab "$grab" "$grabber" "$last_line" ; then
+									output mc say "$ERR_INVALID_GRAB" "$grab".
+								fi
 							fi
+						else
+							trigger minecraft/command/success/scoreboard_score_set "$executer" "$objective" "$player" "$score"
 						fi
-					else
-						trigger minecraft/command/success/scoreboard_score_set "$executer" "$objective" "$player" "$score"
+					# Teleports
+					elif echo "$result" | grep -q "^Teleported .* to .*$" ; then
+						player="$(echo "$result" | sed 's/^Teleported \(.*\) to \(.*\)$/\1/')"
+						destination="$(echo "$result" | sed 's/^Teleported \(.*\) to \(.*\)$/\2/')"
+						if echo "$destination" | grep -q "^.*, .*, .*$" ; then
+							x="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\1/')"
+							y="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\2/')"
+							z="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\3/')"
+							trigger minecraft/command/success/teleport_coordinates "$executer" "$player" "$x" "$y" "$z"
+						else
+							trigger minecraft/command/success/teleport_entity "$executer" "$player" "$destination"
+						fi
+					# Entitydata updates
+					elif echo "$result" | grep -q "^Entity data updated to: .*$" ; then
+						nbt_data="$(echo "$line_data" | ./lib/parse_nbt.sed)"
+						trigger minecraft/command/success/entitydata.py "$executer" "$nbt_data"
+					# Saved the world
+					elif echo "$result" | grep -q "^Saved the world$" ; then
+						trigger minecraft/command/success/save-all "$executer"
 					fi
-				# Teleports
-				elif echo "$result" | grep -q "^Teleported .* to .*$" ; then
-					player="$(echo "$result" | sed 's/^Teleported \(.*\) to \(.*\)$/\1/')"
-					destination="$(echo "$result" | sed 's/^Teleported \(.*\) to \(.*\)$/\2/')"
-					if echo "$destination" | grep -q "^.*, .*, .*$" ; then
-						x="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\1/')"
-						y="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\2/')"
-						z="$(echo "$destination" | sed 's/^\([-.0-9]*\), \([-.0-9]*\), \([-.0-9]*\)$/\3/')"
-						trigger minecraft/command/success/teleport_coordinates "$executer" "$player" "$x" "$y" "$z"
-					else
-						trigger minecraft/command/success/teleport_entity "$executer" "$player" "$destination"
+				# /say messages
+				elif echo "$line_data" | grep -q '^\[.*\] .*$' ; then
+					message="$(echo "$line_data" | sed 's/^\[[^]]*\] //')"
+					trigger minecraft/command/success/say "$executer" "$message"
+				fi
+			# Execute command failure
+			elif echo "$line_data" | grep -q "^Failed to execute '.*' as .*$" ; then
+				command="$(echo "$line_data" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\1/")"
+				executer="$(echo "$line_data" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\2/")"
+				trigger minecraft/command/failure/execute "$command" "$executer"
+			# NBT data dump
+			elif echo "$line_data" | grep -q "^The data tag did not change: .*$" ; then
+				nbt_data="$(echo "$line_data" | ./lib/parse_nbt.sed)"
+				trigger minecraft/command/failure/entitydata_blockdata.py "$nbt_data"
+			# Player message in chat
+			elif echo "$line_data" | grep -q '^<.*> .*$' ; then
+				player="$(echo "$line_data" | sed 's/^<\([^>]*\)> \(.*\)$/\1/')"
+				message="$(echo "$line_data" | sed 's/^<\([^>]*\)> \(.*\)$/\2/')"
+				if echo "$message" | grep -q "^$PREFIX.*$" ; then
+					command=($(echo "$message" | sed "s/^"$PREFIX"\(.*\)$/\1/"))
+					if ! trigger wrapper/global_message_prefix "$player" "${command[@]}" ; then
+						output mc say "$ERR_INVALID_MESSAGE_COMMAND" "${command[0]}".
 					fi
-				# Entitydata updates
-				elif echo "$result" | grep -q "^Entity data updated to: .*$" ; then
-					nbt_data="$(echo "$line_data" | ./lib/parse_nbt.sed)"
-					trigger minecraft/command/success/entitydata.py "$executer" "$nbt_data"
-				# Saved the world
-				elif echo "$result" | grep -q "^Saved the world$" ; then
-					trigger minecraft/command/success/save-all "$executer"
+				else
+					trigger minecraft/global_message "$player" "$message"
 				fi
-			# /say messages
-			elif echo "$line_data" | grep -q '^\[.*\] .*$' ; then
-				message="$(echo "$line_data" | sed 's/^\[[^]]*\] //')"
-				trigger minecraft/command/success/say "$executer" "$message"
+			# do not put an else here unless you explicitly want to run a command on every line the server outputs
 			fi
-		# Execute command failure
-		elif echo "$line_data" | grep -q "^Failed to execute '.*' as .*$" ; then
-			command="$(echo "$line_data" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\1/")"
-			executer="$(echo "$line_data" | sed "s/^Failed to execute '\(.*\)' as \(.*\)$/\2/")"
-			trigger minecraft/command/failure/execute "$command" "$executer"
-		# NBT data dump
-		elif echo "$line_data" | grep -q "^The data tag did not change: .*$" ; then
-			nbt_data="$(echo "$line_data" | ./lib/parse_nbt.sed)"
-			trigger minecraft/command/failure/entitydata_blockdata.py "$nbt_data"
-		# Player message in chat
-		elif echo "$line_data" | grep -q '^<.*> .*$' ; then
-			player="$(echo "$line_data" | sed 's/^<\([^>]*\)> \(.*\)$/\1/')"
-			message="$(echo "$line_data" | sed 's/^<\([^>]*\)> \(.*\)$/\2/')"
-			if echo "$message" | grep -q "^$PREFIX.*$" ; then
-				command=($(echo "$message" | sed "s/^"$PREFIX"\(.*\)$/\1/"))
-				if ! trigger wrapper/global_message_prefix "$player" "${command[@]}" ; then
-					output mc say "$ERR_INVALID_MESSAGE_COMMAND" "${command[0]}".
-				fi
-			else
-				trigger minecraft/global_message "$player" "$message"
+			temp_line="$fail_line" # this section is some stuff for grabs that has to be done at the end of the loop
+			fail_line="$last_line" # specifically, grabs ignore failed execute commands and only care about the errors
+			last_line="$line_data" # as said errors can be generic, be careful about what you feed a grab
+			if echo "$last_line" | grep -q "^Failed to execute '.*' as .*$" ; then
+				last_line="$fail_line"
+				fail_line="$temp_line"
 			fi
-		# Server stopping
-		elif echo "$line_data" | grep -q "^Stopping server$" ; then
-			running="0"
-		# do not put an else here unless you explicitly want to run a command on every line the server outputs
 		fi
-	# </the magic>
-		temp_line="$fail_line" # this section is some stuff for grabs that has to be done at the end of the loop
-		fail_line="$last_line" # specifically, grabs ignore failed execute commands and only care about the errors
-		last_line="$line_data" # as said errors can be generic, be careful about what you feed a grab
-		if echo "$last_line" | grep -q "^Failed to execute '.*' as .*$" ; then
-			last_line="$fail_line"
-			fail_line="$temp_line"
-		fi
-	fi
-done < "$MC_OUTPUT"
-trigger wrapper/shutdown
-output mc_ignore_armorstand say "$WRAPPER_HALT"
-running="1"
-while [ "$running" = "1" ] ; do
-	read line
-	echo "$line"
-	if echo "$line" | grep -q -e "\[..:..:..\] \[Server thread/INFO\]: \[Server\] $WRAPPER_HALT" -e "^\[..:..:..\] \[Server thread/INFO\]: Saving worlds$" ; then
-		running="0"
-		rm "$WRAPPER_PIDFILE"
 	fi
 done < "$MC_OUTPUT"
 exit
