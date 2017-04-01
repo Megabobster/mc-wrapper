@@ -177,6 +177,7 @@ while [ "$wrapper_status" != "done" ] ; do
 		elif [ "$line_status" = "Server thread/INFO" ] ; then
 			# Server stopping
 			if echo "$line_data" | grep -q "^Stopping server$" ; then
+				trigger wrapper/shutdown
 				wrapper_status="stopping"
 			# Execute style input
 			elif echo "$line_data" | grep -q "^\[.*\].*$" ; then
