@@ -2,7 +2,7 @@
 
 . lib/plugin_bash.sh
 
-executer="$1"
+executer="$2"
 
 # triggers on running the save-all command
 # available variables:

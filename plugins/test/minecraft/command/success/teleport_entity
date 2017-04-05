@@ -2,9 +2,9 @@
 
 . lib/plugin_bash.sh
 
-executer="$1"
-player="$2"
-destination="$3"
+executer="$2"
+player="$3"
+destination="$4"
 
 # triggers when an entity is teleported to another entity
 # variables are as follows

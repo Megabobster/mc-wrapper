@@ -8,9 +8,10 @@ def wrapper(command):
 
 import sys, json
 
-executer = sys.argv[1]
-nbt_data = json.loads(sys.argv[2])
-plugin_exit_code=0
+trigger_type = sys.argv[1]
+executer = sys.argv[2]
+nbt_data = json.loads(sys.argv[3])
+plugin_exit_code = 0
 
 # triggers when an entity's entitydata is successfully updated via the entitydata command
 # variables are as follows

@@ -2,8 +2,8 @@
 
 . lib/plugin_bash.sh
 
-player="$1"
-command=("${@:2}")
+player="$2"
+command=("${@:3}")
 
 # triggers when a message starting with $PREFIX is said in global chat
 # passes $command as an array so prefix commands can have arbitrary arguments

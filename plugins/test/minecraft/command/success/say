@@ -2,8 +2,8 @@
 
 . lib/plugin_bash.sh
 
-executer="$1"
-message="$2"
+executer="$2"
+message="$3"
 
 # triggers when the /say command is run
 # variables available are as follows:

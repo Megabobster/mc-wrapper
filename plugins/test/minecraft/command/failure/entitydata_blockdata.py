@@ -8,7 +8,8 @@ def mc(command):
 def wrapper(command):
 	print "wrapper", command
 
-nbt_data = json.loads(sys.argv[1])
+trigger_type = sys.argv[1]
+nbt_data = json.loads(sys.argv[2])
 plugin_exit_code = 0
 
 # triggers when entitydata <entity> {} is run, which spits out the entity's full NBT data

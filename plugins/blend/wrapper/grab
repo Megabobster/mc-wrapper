@@ -2,9 +2,9 @@
 
 . lib/plugin_bash.sh
 
-grab="$1"
-grabber="$2"
-last_line="$3"
+grab="$2"
+grabber="$3"
+last_line="$4"
 
 # triggers when the grab function is run
 # variables available are "$grab", the argument passed to the grab function

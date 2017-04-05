@@ -3,11 +3,8 @@
 . default_config.txt
 . config.txt
 
+trigger_type="$1"
 plugin_exit_code=0
-
-function debug() {
-	echo 'debug' $@
-}
 
 function mc() {
 	echo 'mc' $@
@@ -19,6 +16,10 @@ function mc_ignore_armorstand() {
 
 function wrapper() {
 	echo 'wrapper' $@
+}
+
+function debug() {
+	echo 'debug' $@
 }
 
 # todo: good programming might make grab go away

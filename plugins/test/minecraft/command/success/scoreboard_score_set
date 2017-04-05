@@ -2,10 +2,10 @@
 
 . lib/plugin_bash.sh
 
-executer="$1"
-objective="$2"
-player="$3"
-score="$4"
+executer="$2"
+objective="$3"
+player="$4"
+score="$5"
 
 # triggers when a scoreboard value is updated
 # variables available are as follows:

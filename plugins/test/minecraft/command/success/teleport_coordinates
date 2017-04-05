@@ -2,11 +2,11 @@
 
 . lib/plugin_bash.sh
 
-executer="$1"
-player="$2"
-x="$3"
-y="$4"
-z="$5"
+executer="$2"
+player="$3"
+x="$4"
+y="$5"
+z="$6"
 
 # triggers when an entity is teleported
 # variables are as follows:

@@ -38,13 +38,9 @@ function output () {
 	output_destination=''
 	output_exit_code=0 # default = acceptable data type
 	if [ "$output_data" ] ; then
-		# debug sends output to stdout for debugging purposes
-		if [ "$output_type" = "debug" ] ; then
-			output_formatting=''
-			output_destination=''
 		# mc executes arbitrary minecraft commands as a marker armorstand
 		# mc creates less errors visible to the players
-		elif [ "$output_type" = "mc" ] ; then
+		if [ "$output_type" = "mc" ] ; then
 			output_formatting='execute @r[type=armor_stand,name='"$ARMORSTAND"',tag='"$ARMORSTAND"'] ~ ~ ~ '
 			output_destination="$MC_INPUT"
 		# mc_ignore_armorstand executes arbitrary minecraft commands as the server
@@ -58,6 +54,9 @@ function output () {
 		elif [ "$output_type" = "wrapper" ] ; then
 			output_formatting='['"$(date +%H:%M:%S)"'] [Wrapper thread/INFO]: '
 			output_destination="$MC_OUTPUT"
+		# debug sends output to stdout for debugging purposes
+		elif [ "$output_type" = "debug" ] ; then
+			:
 		else
 			output wrapper "$ERR_OUTPUT_MALFORMED" "$output_type"
 			output_exit_code=1
@@ -80,18 +79,28 @@ function trigger() {
 	trigger_arguments=("${@:2}")
  	trigger_exit_code=1 # default = no match
 	for plugin in "${LOADED_PLUGINS[@]}" ; do
-		if [ -e "$PLUGIN_DIR"/"$plugin"/"$trigger_type" ] ; then
-			plugin_output="$("$PLUGIN_DIR"/"$plugin"/"$trigger_type" "${trigger_arguments[@]}")"
+		plugin_location=''
+		plugin_possible_locations=("$DEFAULT_PLUGIN" "$trigger_type")
+		for location in "${plugin_possible_locations[@]}" ; do
+			found_plugin="$(pattern=("$PLUGIN_DIR"/"$plugin"/"$location"*) ; echo "${pattern[0]}")"
+			if [ -z "$plugin_location" -a -e "$found_plugin" ] ; then
+				plugin_location="$found_plugin"
+			fi
+		done
+		if [ "$plugin_location" ] ; then
+			plugin_output="$("$plugin_location" "$trigger_type" "${trigger_arguments[@]}")"
 			plugin_exit_code="$?"
-			echo "$plugin_output" | while read output_line ; do
-				output_type="$(echo "$output_line" | sed 's/^\([^ ]*\) \(.*\)$/\1/')"
-				output_data="$(echo "$output_line" | sed 's/^\([^ ]*\) \(.*\)$/\2/')"
-				if ! output "$output_type" "$output_data" ; then # run output, but if it returns an error code, return an error for this line from the plugin
-					output wrapper "$ERR_PLUGIN_MALFORMED" \""$plugin"\" \("$trigger_type"\) # maybe: make this a function so all string components are within variables
+			if [ "$plugin_output" ] ; then
+				echo "$plugin_output" | while read output_line ; do
+					output_type="$(echo "$output_line" | sed 's/^\([^ ]*\) \(.*\)$/\1/')"
+					output_data="$(echo "$output_line" | sed 's/^\([^ ]*\) \(.*\)$/\2/')"
+					if ! output "$output_type" "$output_data" ; then # run output, but if it returns an error code, return an error for this line from the plugin
+						output wrapper "$ERR_PLUGIN_MALFORMED" \""$plugin"\" \("$trigger_type"\) # maybe: make this a function so all string components are within variables
+					fi
+				done
+				if [ "$plugin_exit_code" != 1 -a "$trigger_exit_code" != 0 ] ; then
+					trigger_exit_code="$plugin_exit_code"
 				fi
-			done
-			if [ "$plugin_exit_code" != 1 -a "$trigger_exit_code" != 0 ] ; then
-				trigger_exit_code="$plugin_exit_code"
 			fi
 		fi
 	done
@@ -102,7 +111,7 @@ function trigger() {
 DEFAULTS="default_config.txt"
 CONFIG="config.txt"
 WRAPPER_DIR="$(pwd)" # todo: figure this the hell out, I think this script must be run from PWD to function
-OUTPUT_TYPES=("debug" "mc" "mc_ignore_armorstand" "wrapper") # todo: implement this into output
+DEFAULT_PLUGIN="plugin"
 
 # Load Config:
 if ! [ -e "$DEFAULTS" ] ; then
@@ -168,7 +177,7 @@ while [ "$wrapper_status" != "done" ] ; do
 	elif [ "$wrapper_status" = "running" ] ; then
 		echo "$line"
 		if [ "$line_status" = "Wrapper thread/INFO" ] ; then
-
+			# Wrapper halting
 			if echo "$line_data" | grep -q "^Wrapper halting...$" ; then
 				trigger wrapper/shutdown
 				output mc_ignore_armorstand say "$WRAPPER_HALT"
@@ -220,7 +229,7 @@ while [ "$wrapper_status" != "done" ] ; do
 					# Entitydata updates
 					elif echo "$result" | grep -q "^Entity data updated to: .*$" ; then
 						nbt_data="$(echo "$line_data" | ./lib/parse_nbt.sed)"
-						trigger minecraft/command/success/entitydata.py "$executer" "$nbt_data"
+						trigger minecraft/command/success/entitydata "$executer" "$nbt_data"
 					# Saved the world
 					elif echo "$result" | grep -q "^Saved the world$" ; then
 						trigger minecraft/command/success/save-all "$executer"
@@ -238,7 +247,7 @@ while [ "$wrapper_status" != "done" ] ; do
 			# NBT data dump
 			elif echo "$line_data" | grep -q "^The data tag did not change: .*$" ; then
 				nbt_data="$(echo "$line_data" | ./lib/parse_nbt.sed)"
-				trigger minecraft/command/failure/entitydata_blockdata.py "$nbt_data"
+				trigger minecraft/command/failure/entitydata_blockdata "$nbt_data"
 			# Player message in chat
 			elif echo "$line_data" | grep -q '^<.*> .*$' ; then
 				player="$(echo "$line_data" | sed 's/^<\([^>]*\)> \(.*\)$/\1/')"
