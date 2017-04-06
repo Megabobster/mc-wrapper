@@ -1,7 +1,23 @@
 #!/bin/bash
 
-. default_config.txt
-. config.txt
+# Not Options?:
+DEFAULTS="default_config.txt"
+CONFIG="config.txt"
+
+# Load Config:
+if ! [ -e "$DEFAULTS" ] ; then
+	echo 'Default configuration ('"$DEFAULTS"') not present or renamed, exiting...'
+	exit
+fi
+. "$DEFAULTS"
+if ! [ -e "$CONFIG" ] ; then
+	echo "$ERR_NEW_CONFIG"
+	cp "$DEFAULTS" "$CONFIG"
+fi
+. "$CONFIG"
+
+# Not Option?:
+LEVEL_NAME="$(grep level-name= $MINECRAFT_DIR/server.properties | sed 's/^level-name=//')"
 
 trigger_type="$1"
 plugin_exit_code=0

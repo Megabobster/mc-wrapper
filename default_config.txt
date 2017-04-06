@@ -1,15 +1,16 @@
 #!/bin/bash
 
 # Options:
+# Do not put trailing slashes or unescaped special characters in settings here
 PREFIX="!"
 ARMORSTAND="-"
-MINECRAFT_DIR="$(pwd)" # no trailing slash, be careful about quotes here
-BACKUP_DIR="$(pwd)/backups"
+MINECRAFT_DIR="$(pwd)"
+BACKUP_DIR="backups"
 SERVER_JAR="minecraft_server.jar"
 JAVA_PATH="java"
 LAUNCH_ARGS="-Xmx1024M -Xms1024M"
 SCRIPT_NAME="mc_wrapper.sh"
-PLUGIN_DIR="$(pwd)/plugins"
+PLUGIN_DIR="plugins"
 LOADED_PLUGINS=("test" "blend")
 MC_INPUT="mc_input"
 MC_OUTPUT="mc_output"
