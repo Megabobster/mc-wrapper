@@ -2,8 +2,13 @@
 
 . lib/plugin_bash.sh
 
+is_clean_exit="$2"
+
 # shutdown commands could theoretically be put here but be very careful as they
 # won't be run if the wrapper does not exit cleanly, which could potentially
 # bork your world if there is anything that depends on the shutdown commands
 
-mc kill @e[type=armor_stand,name="$ARMORSTAND",tag="$ARMORSTAND"]
+if [ "$2" = "clean" ] ; then
+	mc kill @e[type=armor_stand,name="$ARMORSTAND",tag="$ARMORSTAND"]
+# else :
+fi

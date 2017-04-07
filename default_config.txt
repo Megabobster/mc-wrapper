@@ -20,7 +20,10 @@ SERVER_PIDFILE="minecraft_server.pid"
 # Tranlsation:
 WRAPPER_INIT_START="Wrapper initializing."
 WRAPPER_INIT_DONE="Wrapper initialized."
+WRAPPER_HALTING="Wrapper halting..."
 WRAPPER_HALT="Wrapper halted."
+WRAPPER_STOPPING="Wrapper stopping..."
+WRAPPER_STOP="Wrapper stopped."
 
 ERR_NEW_CONFIG="Generating new config file ($CONFIG)..."
 ERR_WRAPPER_RUNNING="Wrapper already running or pidfile ($WRAPPER_PIDFILE) present, exiting..."

@@ -10,8 +10,10 @@ command=("${@:3}")
 # variables available are as follows:
 # <"$player"> $PREFIX"$command"
 
-if [ "$player" = "Megabobster" -a "${command[0]}" = "halt" ] ; then
-	wrapper "Wrapper halting..." # todo: config option
+if [ "${command[0]}" = "halt" ] ; then
+	wrapper "$WRAPPER_HALTING"
+elif [ "${command[0]}" = "stop" ] ; then
+	wrapper "$WRAPPER_STOPPING"
 elif [ "${command[0]}" = "bork" ] ; then # test cases for grab error handling
 	if [ "${command[1]}" = "1" ] ; then
 		grab bork tellraw @a '["bork"]'		# ERR_GRAB_INPUT_NOT_RECEIVED

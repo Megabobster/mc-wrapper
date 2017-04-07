@@ -151,6 +151,7 @@ while [ "$wrapper_status" != "done" ] ; do
 				wrapper_status="booting"
 			# Wrapper now starting
 			elif echo "$line_data" | grep -q "^\[Server\] $WRAPPER_INIT_START$" ; then # todo: add timestamp requirement; ignore init starts from the past
+				echo "$line"
 				trigger wrapper/startup
 				output mc_ignore_armorstand say "$WRAPPER_INIT_DONE"
 				wrapper_status="running"
@@ -171,9 +172,11 @@ while [ "$wrapper_status" != "done" ] ; do
 	elif [ "$wrapper_status" = "stopping" ] ; then
 		echo "$line"
 		if [ "$line_status" = "Server thread/INFO" ] ; then
-			if echo "$line_data" | grep -q -e "^\[Server\] $WRAPPER_HALT" -e "^Saving worlds$" ; then
+			if echo "$line_data" | grep -q -e "^\[Server\] $WRAPPER_HALT$" -e "^Saving worlds$" ; then
 				rm "$WRAPPER_PIDFILE"
 				wrapper_status="done"
+			elif echo "$line_data" | grep -q "^\[Server\] $WRAPPER_STOP$" ; then
+				output mc_ignore_armorstand stop
 			fi
 		fi
 	# Wrapper running
@@ -182,17 +185,20 @@ while [ "$wrapper_status" != "done" ] ; do
 		echo "$line"
 		# Output created by the wrapper
 		if [ "$line_status" = "Wrapper thread/INFO" ] ; then
-			# Wrapper halting
-			if echo "$line_data" | grep -q "^Wrapper halting...$" ; then
-				trigger wrapper/shutdown
+			if echo "$line_data" | grep -q "^$WRAPPER_HALTING$" ; then
+				trigger wrapper/shutdown "clean"
 				output mc_ignore_armorstand say "$WRAPPER_HALT"
+				wrapper_status="stopping"
+			elif echo "$line_data" | grep -q "^$WRAPPER_STOPPING$" ; then
+				trigger wrapper/shutdown "clean"
+				output mc_ignore_armorstand say "$WRAPPER_STOP"
 				wrapper_status="stopping"
 			fi
 		# Normal server output
 		elif [ "$line_status" = "Server thread/INFO" ] ; then
 			# Server stopping
 			if echo "$line_data" | grep -q "^Stopping server$" ; then
-				trigger wrapper/shutdown
+				trigger wrapper/shutdown "dirty"
 				wrapper_status="stopping"
 			# Execute style input
 			elif echo "$line_data" | grep -q "^\[.*\].*$" ; then
@@ -276,6 +282,8 @@ while [ "$wrapper_status" != "done" ] ; do
 				else
 					trigger minecraft/global_message "$player" "$message"
 				fi
+			else
+				trigger minecraft/line "$line_data"
 			fi
 			# Remember the last few lines of output for the grab trigger
 			temp_line="$fail_line"
