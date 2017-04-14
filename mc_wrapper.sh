@@ -168,7 +168,6 @@ while [ "$wrapper_status" != "done" ] ; do
 			fi
 		fi
 	# Wrapper stopping, so clean up
-	# todo: improve this, add a more clean halt condition
 	elif [ "$wrapper_status" = "stopping" ] ; then
 		echo "$line"
 		if [ "$line_status" = "Server thread/INFO" ] ; then
@@ -193,6 +192,8 @@ while [ "$wrapper_status" != "done" ] ; do
 				trigger wrapper/shutdown "clean"
 				output mc_ignore_armorstand say "$WRAPPER_STOP"
 				wrapper_status="stopping"
+			else
+				trigger wrapper/line "$line_data"
 			fi
 		# Normal server output
 		elif [ "$line_status" = "Server thread/INFO" ] ; then
@@ -295,7 +296,11 @@ while [ "$wrapper_status" != "done" ] ; do
 				last_line="$fail_line"
 				fail_line="$temp_line"
 			fi
+		else
+			trigger line "$line"
 		fi
+		# todo: trigger here instead
+		#trigger "$trigger_type" "${trigger_arguments[@]}"
 	fi
 # Pipe server output into the loop. Very important.
 done < "$MC_OUTPUT"
