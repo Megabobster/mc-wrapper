@@ -17,12 +17,15 @@ plugin_exit_code = 0
 # The data tag did not change: "nbt_data"
 
 # Block data
-if nbt_data.get("id"): # I think only blocks have the "id" tag, and all blocks should have it
-	mc("say " + str(nbt_data["x"]) + " " + str(nbt_data["y"]) + " " + str(nbt_data["z"]))
+# I think only blocks have the "id" tag, and all blocks should have it
+if nbt_data.get("id"):
+	pass
+	#mc("say " + str(nbt_data["x"]) + " " + str(nbt_data["y"]) + " " + str(nbt_data["z"]))
 # Entity data
-elif nbt_data.get("Pos"): # I think all entities have the "Pos" tag
-	if nbt_data.get("CustomName") == "xyz":
-		mc("say " + str(nbt_data["Pos"][0]) + " " + str(nbt_data["Pos"][1]) + " " + str(nbt_data["Pos"][2]))
+# I think all entities have the "Pos" tag
+elif nbt_data.get("Pos"):
+	pass
+	#mc("say " + str(nbt_data["Pos"][0]) + " " + str(nbt_data["Pos"][1]) + " " + str(nbt_data["Pos"][2]))
 else:
 	plugin_exit_code = 1
 

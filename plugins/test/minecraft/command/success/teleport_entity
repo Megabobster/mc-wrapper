@@ -10,8 +10,8 @@ destination="$4"
 # variables are as follows
 # ["$executer": Teleported "$player" to "$destination"]
 
-if [ "$player" = "xyz" -a "$destination" = "Megabobster" ]; then
-	mc entitydata @e[name=xyz,tag=-,type=armor_stand] {}
+if [ "$player" = "Pig" ]; then
+	mc say Hello, "$player"!
 else
 	plugin_exit_code=1
 fi
