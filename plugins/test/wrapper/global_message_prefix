@@ -40,9 +40,6 @@ elif [ "${command[0]}" = "run" ] ; then
 	fi
 elif [ "${command[0]}" = "level-name" ] ; then
 	mc say "$LEVEL_NAME"
-#elif [ "${command[0]}" = "xyz" ] ; then # todo: trigger like grab, not grab...
-#	mc execute "$player" '~ ~ ~' summon ArmorStand '~ ~ ~' '{CustomName:"xyz",Invulnerable:true,Marker:true,Invisible:true,NoGravity:true,Tags:[0:"xyz"]}'
-#	grab xyz tp @e[name=xyz,tag=xyz,c=1] '~ ~ ~'
 else
 	plugin_exit_code=1
 fi

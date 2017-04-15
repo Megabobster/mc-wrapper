@@ -9,13 +9,13 @@ message="$3"
 # variables available are as follows:
 # ["$executer"] "$message"
 
-#if [ "$executer" = "Server" -a "$message" = "Server backing up." ] ; then # todo: finish backup script
-if [ "$message" = "Server backing up." ] ; then
-	mc_ignore_armorstand say This will disable all wrapper-enhanced functionality until the backup is complete.
-	mc save-off
-	mc save-all flush
-elif [ "$message" = "test" ] ; then
-	mc execute "@r[c=1]" '~ ~ ~' summon Pig
+# todo: finish backup script
+#if [ "$executer" = "Server" -a "$message" = "Server backing up." ] ; then
+#	mc_ignore_armorstand say This will disable all wrapper-enhanced functionality until the backup is complete.
+#	mc save-off
+#	mc save-all flush
+if [ "$message" = "test" ] ; then
+	mc execute @r '~ ~ ~' summon Pig
 else
 	plugin_exit_code=1
 fi

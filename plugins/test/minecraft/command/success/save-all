@@ -8,14 +8,14 @@ executer="$2"
 # available variables:
 # ["$executer": Saved the world]
 
-if [ "$executer" = "$ARMORSTAND" ] ; then # todo: better backup script
-	zip -r "$BACKUP_DIR"/"$LEVEL_NAME"\_"$(date +%Y-%m-%d.%H.%M.%S)".zip "$MINECRAFT_DIR"/"$LEVEL_NAME"
-	cd "$BACKUP_DIR" # todo: create directory or error if it doesn't exist
-	ls -td "$LEVEL_NAME"* | sed -e '1,7d' | xargs -d '\n' rm
-	cd "$WRAPPER_DIR"
-	mc save-on
-	mc_ignore_armorstand say Server backup complete.
-else
-	plugin_exit_code=1
-fi
+#if [ "$executer" = "$ARMORSTAND" ] ; then # todo: better backup script
+#	zip -r "$BACKUP_DIR"/"$LEVEL_NAME"\_"$(date +%Y-%m-%d.%H.%M.%S)".zip "$MINECRAFT_DIR"/"$LEVEL_NAME"
+#	cd "$BACKUP_DIR" # todo: create directory or error if it doesn't exist
+#	ls -td "$LEVEL_NAME"* | sed -e '1,7d' | xargs -d '\n' rm
+#	cd "$WRAPPER_DIR"
+#	mc save-on
+#	mc_ignore_armorstand say Server backup complete.
+#else
+plugin_exit_code=1
+#fi
 exit "$plugin_exit_code"

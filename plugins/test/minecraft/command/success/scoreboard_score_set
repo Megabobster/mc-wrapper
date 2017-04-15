@@ -11,8 +11,9 @@ score="$5"
 # variables available are as follows:
 # ["$executer": Set score of "$objective" for player "$player" to "$score"]
 
+# todo: actually write the "smash" script
 if [ "$objective" = "smash" -a "$score" = "1" ] ; then
-	grab smash blockdata -11 4 -9 {} # todo: implement multiple smashers in a world
+	grab smash blockdata -11 4 -9 {}
 elif [ "$objective" = "test" ] ; then
 	mc say "$executer" "$objective" "$player" "$score"
 elif [ "$objective" = "onGround" -a "$score" = "1" ] ; then
